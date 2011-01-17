@@ -33,8 +33,8 @@ function f:PLAYER_LOGIN()
 	if XBT_DB.auras == nil then XBT_DB.auras = false end
 
 	--create our anchors
-	f:CreateAnchor("XBT_Anchor", UIParent)
-	f:CreateAnchor("XBT_FocusAnchor", UIParent)
+	f:CreateAnchor("XBT_Anchor", UIParent, "xanBuffTimers: Target Anchor")
+	f:CreateAnchor("XBT_FocusAnchor", UIParent, "xanBuffTimers: Focus Anchor")
 	
 	--create our timers
 	for i=1,MAX_TIMERS do
@@ -104,6 +104,15 @@ function f:PLAYER_LOGIN()
 				else
 					XBT_DB.auras = true
 					DEFAULT_CHAT_FRAME:AddMessage("xanBuffTimers: Buff Auras [|cFF99CC33ON|r]")
+				end
+				--update the buff display
+				if UnitName("target") and UnitGUID("target") then
+					targetGUID = UnitGUID("target")
+					f:ProcessBuffs("target", timers)
+				end
+				if UnitName("focus") and UnitGUID("focus") then
+					focusGUID = UnitGUID("focus")
+					f:ProcessBuffs("focus", timersFocus)
 				end
 				return true
 			end
@@ -179,7 +188,7 @@ end
 --  Frame Creation  --
 ----------------------
 
-function f:CreateAnchor(name, parent)
+function f:CreateAnchor(name, parent, desc)
 
 	--create the anchor
 	local frameAnchor = CreateFrame("Frame", name, parent)
@@ -202,8 +211,8 @@ function f:CreateAnchor(name, parent)
 			edgeSize = 16,
 			insets = { left = 5, right = 5, top = 5, bottom = 5 }
 	})
-	frameAnchor:SetBackdropColor(0.75,0,0,1)
-	frameAnchor:SetBackdropBorderColor(0.75,0,0,1)
+	frameAnchor:SetBackdropColor(0,183/255,239/255,1)
+	frameAnchor:SetBackdropBorderColor(0,183/255,239/255,1)
 
 	frameAnchor:SetScript("OnLeave",function(self)
 		GameTooltip:Hide()
@@ -216,6 +225,9 @@ function f:CreateAnchor(name, parent)
 		GameTooltip:ClearLines()
 		
 		GameTooltip:AddLine(name)
+		if desc then
+			GameTooltip:AddLine(desc)
+		end
 		GameTooltip:Show()
 	end)
 
@@ -350,14 +362,14 @@ function f:ProcessBuffs(sT, sdTimer)
 		if XBT_DB.auras then
 			--auras are on so basically were allowing everything
 			passChk = true
-		elseif not XBT_DB.auras and duration > 0 then 
+		elseif not XBT_DB.auras and duration and duration > 0 then 
 			--auras are not on but the duration is greater then zero, so allow
 			passChk = true
 		end
 		
 		--UnitIsUnit is used JUST IN CASE (you never know lol)
 		if passChk and name and unitCaster and UnitIsUnit(unitCaster, "player") then
-			if duration <= 0 then expTime = 0 end --just in case for non-cancel auras
+			if not duration or duration <= 0 then expTime = 0 end --just in case for non-cancel auras
 			sdTimer[i].id = sT
 			sdTimer[i].spellName = name
 			sdTimer[i].spellId = spellId

@@ -51,7 +51,6 @@ function f:PLAYER_LOGIN()
 
 	SLASH_XANBUFFTIMERS1 = "/xanbufftimers"
 	SLASH_XANBUFFTIMERS2 = "/xbt"
-	SLASH_XANBUFFTIMERS3 = "/xandt"
 	SlashCmdList["XANBUFFTIMERS"] = function(msg)
 	
 		local a,b,c=strfind(msg, "(%S+)"); --contiguous string of non-space characters

@@ -11,6 +11,8 @@ local targetGUID = 0
 local focusGUID = 0
 local UnitAura = UnitAura
 local UnitIsUnit = UnitIsUnit
+local UnitGUID = UnitGUID
+local UnitName = UnitName
 
 local pointT = {
 	["target"] = "XBT_Anchor",
@@ -35,12 +37,6 @@ function f:PLAYER_LOGIN()
 	--create our anchors
 	f:CreateAnchor("XBT_Anchor", UIParent, "xanBuffTimers: Target Anchor")
 	f:CreateAnchor("XBT_FocusAnchor", UIParent, "xanBuffTimers: Focus Anchor")
-	
-	--create our timers
-	for i=1,MAX_TIMERS do
-		timers[i] = f:CreateBuffTimers()
-		timersFocus[i] = f:CreateBuffTimers()
-	end
 	
 	f:UnregisterEvent("PLAYER_LOGIN")
 	f.PLAYER_LOGIN = nil
@@ -71,8 +67,12 @@ function f:PLAYER_LOGIN()
 					if scalenum and scalenum ~= "" and tonumber(scalenum) then
 						XBT_DB.scale = tonumber(scalenum)
 						for i=1, MAX_TIMERS do
-							timers[i]:SetScale(tonumber(scalenum))
-							timersFocus[i]:SetScale(tonumber(scalenum))
+							if timers[i] then
+								timers[i]:SetScale(tonumber(scalenum))
+							end
+							if timersFocus[i] then
+								timersFocus[i]:SetScale(tonumber(scalenum))
+							end
 						end
 						DEFAULT_CHAT_FRAME:AddMessage("xanBuffTimers: Scale has been set to ["..tonumber(scalenum).."]")
 						return true
@@ -350,13 +350,13 @@ end
 
 function f:ProcessBuffs(sT, sdTimer)
 	--only process for as many timers as we are using
-	local countBuffs = 0
+	local slotNum = 0
 	
 	for i=1, MAX_TIMERS do
-	
 		local name, _, icon, count, _, duration, expTime, unitCaster, _, _, spellId = UnitAura(sT, i, 'HELPFUL|PLAYER')
-		local passChk = false
+		if not name then break end 
 		
+		local passChk = false
 		--only allow non-cancel auras if the user allowed it
 		if XBT_DB.auras then
 			--auras are on so basically were allowing everything
@@ -368,16 +368,19 @@ function f:ProcessBuffs(sT, sdTimer)
 		
 		--UnitIsUnit is used JUST IN CASE (you never know lol)
 		if passChk and name and unitCaster and UnitIsUnit(unitCaster, "player") then
+			--get the next timer slot we can use
+			slotNum = slotNum + 1
+			if not sdTimer[slotNum] then sdTimer[slotNum] = f:CreateBuffTimers() end --create the timer if it doesn't exist
 			if not duration or duration <= 0 then expTime = 0 end --just in case for non-cancel auras
-			sdTimer[i].id = sT
-			sdTimer[i].spellName = name
-			sdTimer[i].spellId = spellId
-			sdTimer[i].iconTex = icon
-			sdTimer[i].icon:SetTexture(icon)
-			sdTimer[i].startTime = (expTime - duration) or 0
-			sdTimer[i].durationTime = duration or 0
-			sdTimer[i].endTime = expTime or 0
-			sdTimer[i].stacks = count or 0
+			sdTimer[slotNum].id = sT
+			sdTimer[slotNum].spellName = name
+			sdTimer[slotNum].spellId = spellId
+			sdTimer[slotNum].iconTex = icon
+			sdTimer[slotNum].icon:SetTexture(icon)
+			sdTimer[slotNum].startTime = (expTime - duration) or 0
+			sdTimer[slotNum].durationTime = duration or 0
+			sdTimer[slotNum].endTime = expTime or 0
+			sdTimer[slotNum].stacks = count or 0
 				--this has to check for duration=0 because we cannot divide by zero
 				local tmpBL
 				if duration > 0 then
@@ -386,16 +389,19 @@ function f:ProcessBuffs(sT, sdTimer)
 					tmpBL = string.len(BAR_TEXT)
 				end
 				if tmpBL > string.len(BAR_TEXT) then tmpBL = string.len(BAR_TEXT) end
-			sdTimer[i].tmpBL = tmpBL
-			sdTimer[i].active = true
-			if not sdTimer[i]:IsVisible() then sdTimer[i]:Show() end
-			countBuffs = countBuffs + 1
-		else
+			sdTimer[slotNum].tmpBL = tmpBL
+			sdTimer[slotNum].active = true
+			if not sdTimer[slotNum]:IsVisible() then sdTimer[slotNum]:Show() end
+		end
+	end
+	--clear everything else
+	for i=(slotNum+1), #sdTimer do
+		if sdTimer[i] then
 			sdTimer[i].active = false
 			if sdTimer[i]:IsVisible() then sdTimer[i]:Hide() end
 		end
 	end
-	if countBuffs > 0 then
+	if slotNum > 0 then
 		f:ArrangeBuffs(false, sT)
 	end
 end
@@ -403,7 +409,7 @@ end
 function f:ClearBuffs(sdTimer)
 	local adj = 0
 
-	for i=1, MAX_TIMERS do
+	for i=1, #sdTimer do
 		if sdTimer[i].active then
 			sdTimer[i].active = false
 		end

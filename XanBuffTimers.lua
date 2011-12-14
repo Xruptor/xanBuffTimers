@@ -33,6 +33,7 @@ function f:PLAYER_LOGIN()
 	if XBT_DB.grow == nil then XBT_DB.grow = false end
 	if XBT_DB.sort == nil then XBT_DB.sort = false end
 	if XBT_DB.auras == nil then XBT_DB.auras = false end
+	if XBT_DB.onlyFocus == nil then XBT_DB.onlyFocus = false end
 
 	--create our anchors
 	f:CreateAnchor("XBT_Anchor", UIParent, "xanBuffTimers: Target Anchor")
@@ -96,6 +97,15 @@ function f:PLAYER_LOGIN()
 					DEFAULT_CHAT_FRAME:AddMessage("xanBuffTimers: Bars sort [|cFF99CC33ASCENDING|r]")
 				end
 				return true
+			elseif c and c:lower() == "focus" then
+				if XBT_DB.onlyFocus then
+					XBT_DB.onlyFocus = false
+					DEFAULT_CHAT_FRAME:AddMessage("xanBuffTimers: Show only focus target buffs [|cFF99CC33OFF|r]")
+				else
+					XBT_DB.onlyFocus = true
+					DEFAULT_CHAT_FRAME:AddMessage("xanBuffTimers: Show only focus target buffs [|cFF99CC33ON|r]")
+				end
+				return true
 			elseif c and c:lower() == "auras" then
 				if XBT_DB.auras then
 					XBT_DB.auras = false
@@ -123,6 +133,7 @@ function f:PLAYER_LOGIN()
 		DEFAULT_CHAT_FRAME:AddMessage("/xbt grow - changes the direction in which the bars grow (UP/DOWN)")
 		DEFAULT_CHAT_FRAME:AddMessage("/xbt sort - changes the sorting of the bars. (ASCENDING/DESCENDING)")
 		DEFAULT_CHAT_FRAME:AddMessage("/xbt auras - toggles the display of permenate/non-cancel auras (ON/OFF)")
+		DEFAULT_CHAT_FRAME:AddMessage("/xbt focus - toggles buffs only to be displayed for focus target (ON/OFF)")
 	end
 	
 	local ver = tonumber(GetAddOnMetadata("xanBuffTimers","Version")) or 'Unknown'
@@ -130,6 +141,7 @@ function f:PLAYER_LOGIN()
 end
 	
 function f:PLAYER_TARGET_CHANGED()
+	if XBT_DB.onlyFocus then return end
 	if UnitName("target") and UnitGUID("target") then
 		targetGUID = UnitGUID("target")
 		f:ProcessBuffs("target", timers)
@@ -168,7 +180,7 @@ function f:COMBAT_LOG_EVENT_UNFILTERED(event, timestamp, eventType, hideCaster, 
 		--clear the buffs if the unit died
 		--NOTE the reason an elseif isn't used is because some dorks may have
 		--their current target as their focus as well
-		if dstGUID == targetGUID then
+		if dstGUID == targetGUID and not XBT_DB.onlyFocus then
 			f:ClearBuffs(timers)
 			targetGUID = 0
 		end
@@ -179,7 +191,7 @@ function f:COMBAT_LOG_EVENT_UNFILTERED(event, timestamp, eventType, hideCaster, 
 		
 	elseif eventSwitch[eventType] and band(srcFlags, COMBATLOG_OBJECT_AFFILIATION_MINE) ~= 0 then
 		--process the spells based on GUID
-		if dstGUID == targetGUID then
+		if dstGUID == targetGUID and not XBT_DB.onlyFocus then
 			f:ProcessBuffs("target", timers)
 		end
 		if dstGUID == focusGUID then

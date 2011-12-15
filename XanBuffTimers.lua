@@ -172,6 +172,11 @@ local eventSwitch = {
 	["SPELL_AURA_BROKEN_SPELL"] = true,
 	["ENCHANT_REMOVED"] = true,
 	["ENCHANT_APPLIED"] = true,
+	["SPELL_CAST_SUCCESS"] = true,
+	["SPELL_PERIODIC_ENERGIZE"] = true,
+	["SPELL_ENERGIZE"] = true,
+	["SPELL_PERIODIC_HEAL"] = true,
+	["SPELL_HEAL"] = true,
 }
 
 function f:COMBAT_LOG_EVENT_UNFILTERED(event, timestamp, eventType, hideCaster, sourceGUID, sourceName, srcFlags, sourceRaidFlags, dstGUID, destName, destFlags, destRaidFlags, spellID, spellName, spellSchool, auraType, amount)

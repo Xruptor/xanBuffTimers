@@ -177,6 +177,8 @@ local eventSwitch = {
 	["SPELL_ENERGIZE"] = true,
 	["SPELL_PERIODIC_HEAL"] = true,
 	["SPELL_HEAL"] = true,
+	["SPELL_DAMAGE"] = true,
+	["SPELL_PERIODIC_DAMAGE"] = true,
 }
 
 function f:COMBAT_LOG_EVENT_UNFILTERED(event, timestamp, eventType, hideCaster, sourceGUID, sourceName, srcFlags, sourceRaidFlags, dstGUID, destName, destFlags, destRaidFlags, spellID, spellName, spellSchool, auraType, amount)

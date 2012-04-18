@@ -1,8 +1,8 @@
 ## Interface: 40300
 ## Title: xanBuffTimers
-## Notes: A small text based progress bar system for target buffs.
+## Notes: A small text based progress bar system for target/focus/player buffs.
 ## Author: Xruptor
-## Version: 2.2
+## Version: 3.0
 ## SavedVariablesPerCharacter: XBT_DB
 
 xanBuffTimers.lua

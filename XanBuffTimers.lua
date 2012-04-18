@@ -1,22 +1,24 @@
 
-local timers = {}
+local timersTarget = {}
 local timersFocus = {}
+local timersPlayer = {}
 local MAX_TIMERS = 15
 local ICON_SIZE = 20
 local BAR_ADJUST = 25
 local BAR_TEXT = "llllllllllllllllllllllllllllllllllllllll"
 local band = bit.band
-
 local targetGUID = 0
 local focusGUID = 0
+local playerGUID = 0
 local UnitAura = UnitAura
 local UnitIsUnit = UnitIsUnit
 local UnitGUID = UnitGUID
 local UnitName = UnitName
 
 local pointT = {
-	["target"] = "XBT_Anchor",
+	["target"] = "XBT_TargetAnchor",
 	["focus"] = "XBT_FocusAnchor",
+	["player"] = "XBT_PlayerAnchor",
 }
 
 local f = CreateFrame("frame","xanBuffTimers",UIParent)
@@ -32,15 +34,20 @@ function f:PLAYER_LOGIN()
 	if XBT_DB.scale == nil then XBT_DB.scale = 1 end
 	if XBT_DB.grow == nil then XBT_DB.grow = false end
 	if XBT_DB.sort == nil then XBT_DB.sort = false end
-	if XBT_DB.auras == nil then XBT_DB.auras = false end
-	if XBT_DB.onlyFocus == nil then XBT_DB.onlyFocus = false end
+	if XBT_DB.showTarget == nil then XBT_DB.showTarget = true end
+	if XBT_DB.showFocus == nil then XBT_DB.showFocus = true end
+	if XBT_DB.showPlayer == nil then XBT_DB.showPlayer = true end
+	if XBT_DB.showInfinite == nil then XBT_DB.showInfinite = false end
+	if XBT_DB.showIcon == nil then XBT_DB.showIcon = true end
+	if XBT_DB.showSpellName == nil then XBT_DB.showSpellName = false end
 
 	--create our anchors
-	f:CreateAnchor("XBT_Anchor", UIParent, "xanBuffTimers: Target Anchor")
+	f:CreateAnchor("XBT_TargetAnchor", UIParent, "xanBuffTimers: Target Anchor")
 	f:CreateAnchor("XBT_FocusAnchor", UIParent, "xanBuffTimers: Focus Anchor")
+	f:CreateAnchor("XBT_PlayerAnchor", UIParent, "xanBuffTimers: Player Anchor")
 	
-	f:UnregisterEvent("PLAYER_LOGIN")
-	f.PLAYER_LOGIN = nil
+	playerGUID = UnitGUID("player")
+	f:ProcessBuffs("player", timersPlayer)
 	
 	f:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 	f:RegisterEvent("PLAYER_TARGET_CHANGED")
@@ -54,12 +61,14 @@ function f:PLAYER_LOGIN()
 		
 		if a then
 			if c and c:lower() == "anchor" then
-				if XBT_Anchor:IsVisible() then
-					XBT_Anchor:Hide()
+				if XBT_TargetAnchor:IsVisible() then
+					XBT_TargetAnchor:Hide()
 					XBT_FocusAnchor:Hide()
+					XBT_PlayerAnchor:Hide()
 				else
-					XBT_Anchor:Show()
+					XBT_TargetAnchor:Show()
 					XBT_FocusAnchor:Show()
+					XBT_PlayerAnchor:Show()
 				end
 				return true
 			elseif c and c:lower() == "scale" then
@@ -67,13 +76,14 @@ function f:PLAYER_LOGIN()
 					local scalenum = strsub(msg, b+2)
 					if scalenum and scalenum ~= "" and tonumber(scalenum) then
 						XBT_DB.scale = tonumber(scalenum)
-						for i=1, MAX_TIMERS do
-							if timers[i] then
-								timers[i]:SetScale(tonumber(scalenum))
-							end
-							if timersFocus[i] then
-								timersFocus[i]:SetScale(tonumber(scalenum))
-							end
+						for i=1, #timersTarget do
+							timersTarget[i]:SetScale(tonumber(scalenum))
+						end
+						for i=1, #timersFocus do
+							timersFocus[i]:SetScale(tonumber(scalenum))
+						end
+						for i=1, #timersPlayer do
+							timersPlayer[i]:SetScale(tonumber(scalenum))
 						end
 						DEFAULT_CHAT_FRAME:AddMessage("xanBuffTimers: Scale has been set to ["..tonumber(scalenum).."]")
 						return true
@@ -97,32 +107,68 @@ function f:PLAYER_LOGIN()
 					DEFAULT_CHAT_FRAME:AddMessage("xanBuffTimers: Bars sort [|cFF99CC33ASCENDING|r]")
 				end
 				return true
-			elseif c and c:lower() == "focus" then
-				if XBT_DB.onlyFocus then
-					XBT_DB.onlyFocus = false
-					DEFAULT_CHAT_FRAME:AddMessage("xanBuffTimers: Show only focus target buffs [|cFF99CC33OFF|r]")
+			elseif c and c:lower() == "target" then
+				if XBT_DB.showTarget then
+					XBT_DB.showTarget = false
+					f:ClearBuffs(timersTarget)
+					DEFAULT_CHAT_FRAME:AddMessage("xanBuffTimers: Show target tracking [|cFF99CC33OFF|r]")
 				else
-					XBT_DB.onlyFocus = true
-					DEFAULT_CHAT_FRAME:AddMessage("xanBuffTimers: Show only focus target buffs [|cFF99CC33ON|r]")
+					XBT_DB.showTarget = true
+					f:ProcessBuffs("target", timersTarget)
+					DEFAULT_CHAT_FRAME:AddMessage("xanBuffTimers: Show target tracking [|cFF99CC33ON|r]")
 				end
 				return true
-			elseif c and c:lower() == "auras" then
-				if XBT_DB.auras then
-					XBT_DB.auras = false
-					DEFAULT_CHAT_FRAME:AddMessage("xanBuffTimers: Buff Auras [|cFF99CC33OFF|r]")
+			elseif c and c:lower() == "focus" then
+				if XBT_DB.showFocus then
+					XBT_DB.showFocus = false
+					f:ClearBuffs(timersFocus)
+					DEFAULT_CHAT_FRAME:AddMessage("xanBuffTimers: Show focus tracking [|cFF99CC33OFF|r]")
 				else
-					XBT_DB.auras = true
-					DEFAULT_CHAT_FRAME:AddMessage("xanBuffTimers: Buff Auras [|cFF99CC33ON|r]")
-				end
-				--update the buff display
-				if UnitName("target") and UnitGUID("target") then
-					targetGUID = UnitGUID("target")
-					f:ProcessBuffs("target", timers)
-				end
-				if UnitName("focus") and UnitGUID("focus") then
-					focusGUID = UnitGUID("focus")
+					XBT_DB.showFocus = true
 					f:ProcessBuffs("focus", timersFocus)
+					DEFAULT_CHAT_FRAME:AddMessage("xanBuffTimers: Show focus tracking [|cFF99CC33ON|r]")
 				end
+				return true
+			elseif c and c:lower() == "player" then
+				if XBT_DB.showPlayer then
+					XBT_DB.showPlayer = false
+					f:ClearBuffs(timersPlayer)
+					DEFAULT_CHAT_FRAME:AddMessage("xanBuffTimers: Show player tracking [|cFF99CC33OFF|r]")
+				else
+					XBT_DB.showPlayer = true
+					f:ProcessBuffs("player", timersPlayer)
+					DEFAULT_CHAT_FRAME:AddMessage("xanBuffTimers: Show player tracking [|cFF99CC33ON|r]")
+				end
+				return true
+			elseif c and c:lower() == "infinite" then
+				if XBT_DB.showInfinite then
+					XBT_DB.showInfinite = false
+					DEFAULT_CHAT_FRAME:AddMessage("xanBuffTimers: Show buffs whom have no durations/timers (Infinite) [|cFF99CC33OFF|r]")
+				else
+					XBT_DB.showInfinite = true
+					DEFAULT_CHAT_FRAME:AddMessage("xanBuffTimers: Show buffs whom have no durations/timers (Infinite) [|cFF99CC33ON|r]")
+				end
+				f:ReloadBuffs()
+				return true
+			elseif c and c:lower() == "icon" then
+				if XBT_DB.showIcon then
+					XBT_DB.showIcon = false
+					DEFAULT_CHAT_FRAME:AddMessage("xanBuffTimers: Show buff icons [|cFF99CC33OFF|r]")
+				else
+					XBT_DB.showIcon = true
+					DEFAULT_CHAT_FRAME:AddMessage("xanBuffTimers: Show buff icons [|cFF99CC33ON|r]")
+				end
+				f:ReloadBuffs()
+				return true
+			elseif c and c:lower() == "spellname" then
+				if XBT_DB.showSpellName then
+					XBT_DB.showSpellName = false
+					DEFAULT_CHAT_FRAME:AddMessage("xanBuffTimers: Show buff spell names [|cFF99CC33OFF|r]")
+				else
+					XBT_DB.showSpellName = true
+					DEFAULT_CHAT_FRAME:AddMessage("xanBuffTimers: Show buff spell names [|cFF99CC33ON|r]")
+				end
+				f:ReloadBuffs()
 				return true
 			end
 		end
@@ -132,26 +178,34 @@ function f:PLAYER_LOGIN()
 		DEFAULT_CHAT_FRAME:AddMessage("/xbt scale # - sets the scale size of the bars")
 		DEFAULT_CHAT_FRAME:AddMessage("/xbt grow - changes the direction in which the bars grow (UP/DOWN)")
 		DEFAULT_CHAT_FRAME:AddMessage("/xbt sort - changes the sorting of the bars. (ASCENDING/DESCENDING)")
-		DEFAULT_CHAT_FRAME:AddMessage("/xbt auras - toggles the display of permenate/non-cancel auras (ON/OFF)")
-		DEFAULT_CHAT_FRAME:AddMessage("/xbt focus - toggles buffs only to be displayed for focus target (ON/OFF)")
+		DEFAULT_CHAT_FRAME:AddMessage("/xbt target - toggles target tracking (ON/OFF)")
+		DEFAULT_CHAT_FRAME:AddMessage("/xbt focus - toggles focus tracking (ON/OFF)")
+		DEFAULT_CHAT_FRAME:AddMessage("/xbt player - toggles player tracking (ON/OFF)")
+		DEFAULT_CHAT_FRAME:AddMessage("/xbt infinite - toggles displaying buffs whom have no duration/timers (ON/OFF)")
+		DEFAULT_CHAT_FRAME:AddMessage("/xbt icon - toggles displaying of buff icons (ON/OFF)")
+		DEFAULT_CHAT_FRAME:AddMessage("/xbt spellname - toggles displaying of buff spell names (ON/OFF)")
 	end
 	
 	local ver = tonumber(GetAddOnMetadata("xanBuffTimers","Version")) or 'Unknown'
 	DEFAULT_CHAT_FRAME:AddMessage("|cFF99CC33xanBuffTimers|r [v|cFFDF2B2B"..ver.."|r] loaded: /xbt")
+
+	f:UnregisterEvent("PLAYER_LOGIN")
+	f.PLAYER_LOGIN = nil
 end
 	
 function f:PLAYER_TARGET_CHANGED()
-	if XBT_DB.onlyFocus then return end
+	if not XBT_DB.showTarget then return end
 	if UnitName("target") and UnitGUID("target") then
 		targetGUID = UnitGUID("target")
-		f:ProcessBuffs("target", timers)
+		f:ProcessBuffs("target", timersTarget)
 	else
-		f:ClearBuffs(timers)
+		f:ClearBuffs(timersTarget)
 		targetGUID = 0
 	end
 end
 
 function f:PLAYER_FOCUS_CHANGED()
+	if not XBT_DB.showFocus then return end
 	if UnitName("focus") and UnitGUID("focus") then
 		focusGUID = UnitGUID("focus")
 		f:ProcessBuffs("focus", timersFocus)
@@ -187,22 +241,28 @@ function f:COMBAT_LOG_EVENT_UNFILTERED(event, timestamp, eventType, hideCaster, 
 		--clear the buffs if the unit died
 		--NOTE the reason an elseif isn't used is because some dorks may have
 		--their current target as their focus as well
-		if dstGUID == targetGUID and not XBT_DB.onlyFocus then
-			f:ClearBuffs(timers)
+		if dstGUID == targetGUID and XBT_DB.showTarget then
+			f:ClearBuffs(timersTarget)
 			targetGUID = 0
 		end
-		if dstGUID == focusGUID then
+		if dstGUID == focusGUID and XBT_DB.showFocus then
 			f:ClearBuffs(timersFocus)
 			focusGUID = 0
+		end
+		if dstGUID == playerGUID and XBT_DB.showPlayer then
+			f:ClearBuffs(timersPlayer)
 		end
 		
 	elseif eventSwitch[eventType] and band(srcFlags, COMBATLOG_OBJECT_AFFILIATION_MINE) ~= 0 then
 		--process the spells based on GUID
-		if dstGUID == targetGUID and not XBT_DB.onlyFocus then
-			f:ProcessBuffs("target", timers)
+		if dstGUID == targetGUID and XBT_DB.showTarget then
+			f:ProcessBuffs("target", timersTarget)
 		end
-		if dstGUID == focusGUID then
+		if dstGUID == focusGUID and XBT_DB.showFocus then
 			f:ProcessBuffs("focus", timersFocus)
+		end
+		if dstGUID == playerGUID and XBT_DB.showPlayer then
+			f:ProcessBuffs("player", timersPlayer)
 		end
     end
 end
@@ -293,12 +353,15 @@ local TimerOnUpdate = function(self, time)
 		local beforeEnd
 		local barLength
 		
-		if XBT_DB.auras and self.durationTime <= 0 then
+		--this is in case of auras with everlasting buffs (Infinite)
+		if XBT_DB and XBT_DB.showInfinite and self.durationTime <= 0 then
 			beforeEnd = 0
 			barLength = string.len(BAR_TEXT)
+			self:SetAlpha(0.5)
 		else
 			beforeEnd = self.endTime - GetTime()
 			barLength = ceil( string.len(BAR_TEXT) * (beforeEnd / self.durationTime) )
+			self:SetAlpha(1)
 		end
 		
 		--check the string length JUST in case for errors
@@ -353,12 +416,24 @@ function f:CreateBuffTimers()
     Frm.timetext = Frm:CreateFontString(nil, "OVERLAY");
     Frm.timetext:SetFont("Fonts\\FRIZQT__.TTF",10,"OUTLINE")
     Frm.timetext:SetJustifyH("RIGHT")
-    Frm.timetext:SetPoint("RIGHT", Frm.icon, "LEFT" , -5, 0)
-
+    Frm.timetext:SetPoint("LEFT", Frm.icon, "RIGHT", 5, 0)
+	
+    Frm.spellText = Frm:CreateFontString(nil, "OVERLAY");
+    Frm.spellText:SetFont("Fonts\\FRIZQT__.TTF",10,"OUTLINE")
+	Frm.spellText:SetTextColor(0,183/255,239/255)
+    Frm.spellText:SetJustifyH("RIGHT")
+    Frm.spellText:SetPoint("RIGHT", Frm.icon, "LEFT" , -5, 0)
+	
+    Frm.spellText2 = Frm:CreateFontString(nil, "OVERLAY");
+    Frm.spellText2:SetFont("Fonts\\FRIZQT__.TTF",10,"OUTLINE")
+	Frm.spellText2:SetTextColor(0,183/255,239/255)
+    Frm.spellText2:SetJustifyH("RIGHT")
+    Frm.spellText2:SetPoint("RIGHT", Frm.icon, "LEFT" , 20, 0)
+	
 	Frm.Bar = Frm:CreateFontString(nil, "GameFontNormal")
 	Frm.Bar:SetFont(STANDARD_TEXT_FONT, 14, "OUTLINE, MONOCHROME")
 	Frm.Bar:SetText(BAR_TEXT)
-	Frm.Bar:SetPoint("LEFT", Frm.icon, "RIGHT", 1, 0)
+	Frm.Bar:SetPoint("LEFT", Frm.icon, "RIGHT", 30, 0)
 		
     Frm:SetScript("OnUpdate", TimerOnUpdate)
 
@@ -381,30 +456,55 @@ function f:ProcessBuffs(sT, sdTimer)
 		if not name then break end 
 		
 		local passChk = false
+		
 		--only allow non-cancel auras if the user allowed it
-		if XBT_DB.auras then
+		if XBT_DB.showInfinite then
 			--auras are on so basically were allowing everything
 			passChk = true
-		elseif not XBT_DB.auras and duration and duration > 0 then 
+		elseif not XBT_DB.showInfinite and duration and duration > 0 then 
 			--auras are not on but the duration is greater then zero, so allow
 			passChk = true
 		end
 		
-		--UnitIsUnit is used JUST IN CASE (you never know lol)
-		if passChk and name and unitCaster and UnitIsUnit(unitCaster, "player") then
+		if passChk and name and unitCaster and unitCaster == "player" then
 			--get the next timer slot we can use
 			slotNum = slotNum + 1
 			if not sdTimer[slotNum] then sdTimer[slotNum] = f:CreateBuffTimers() end --create the timer if it doesn't exist
-			if not duration or duration <= 0 then expTime = 0 end --just in case for non-cancel auras
+			if not duration or duration <= 0 then 
+				sdTimer[slotNum].isInfinite = true
+				expTime = 0
+			else
+				sdTimer[slotNum].isInfinite = false
+			end
 			sdTimer[slotNum].id = sT
 			sdTimer[slotNum].spellName = name
 			sdTimer[slotNum].spellId = spellId
-			sdTimer[slotNum].iconTex = icon
-			sdTimer[slotNum].icon:SetTexture(icon)
+			
+			--change the timer text according if we have icon or not and wether we are displaying spell name or not
+			if XBT_DB.showIcon then
+				sdTimer[slotNum].iconTex = icon
+				sdTimer[slotNum].icon:SetTexture(icon)
+				sdTimer[slotNum].showIcon = true
+				sdTimer[slotNum].spellText2:SetText("")
+				sdTimer[slotNum].stacks = count or 0
+				if XBT_DB.showSpellName then
+					sdTimer[slotNum].spellText:SetText(name)
+				else
+					sdTimer[slotNum].spellText:SetText("")
+					sdTimer[slotNum].spellText2:SetText("")
+				end
+			else
+				sdTimer[slotNum].iconTex = icon
+				sdTimer[slotNum].icon:SetTexture(nil)
+				sdTimer[slotNum].showIcon = false
+				sdTimer[slotNum].spellText:SetText("")
+				sdTimer[slotNum].stacks = 0
+				sdTimer[slotNum].spellText2:SetText(name)
+			end
+
 			sdTimer[slotNum].startTime = (expTime - duration) or 0
 			sdTimer[slotNum].durationTime = duration or 0
 			sdTimer[slotNum].endTime = expTime or 0
-			sdTimer[slotNum].stacks = count or 0
 				--this has to check for duration=0 because we cannot divide by zero
 				local tmpBL
 				if duration > 0 then
@@ -452,6 +552,15 @@ function f:ClearBuffs(sdTimer)
 	
 end
 
+function f:ReloadBuffs()
+	f:ClearBuffs(timersTarget)
+	f:ClearBuffs(timersFocus)
+	f:ClearBuffs(timersPlayer)
+	f:ProcessBuffs("target", timersTarget)
+	f:ProcessBuffs("focus", timersFocus)
+	f:ProcessBuffs("player", timersPlayer)
+end
+
 function f:ArrangeBuffs(throttle, id)
 	--to prevent spam and reduce CPU use
 	if throttle then
@@ -466,9 +575,11 @@ function f:ArrangeBuffs(throttle, id)
 	local sdTimer
 	
 	if id == "target" then
-		sdTimer = timers
+		sdTimer = timersTarget
 	elseif id == "focus" then
 		sdTimer = timersFocus
+	elseif id == "player" then
+		sdTimer = timersPlayer
 	else
 		return
 	end
@@ -480,7 +591,9 @@ function f:ArrangeBuffs(throttle, id)
 			table.sort(sdTimer, function(a,b)
 				if a.active == true and b.active == false then
 					return true;
-				elseif a.active and b.active then
+				elseif a.active and b.active and b.isInfinite then
+					return false;
+				elseif a.active and b.active and not b.isInfinite then
 					return (a.tmpBL < b.tmpBL);
 				end
 				return false;
@@ -490,7 +603,9 @@ function f:ArrangeBuffs(throttle, id)
 			table.sort(sdTimer, function(a,b)
 				if a.active == true and b.active == false then
 					return true;
-				elseif a.active and b.active then
+				elseif a.active and b.active and a.isInfinite then
+					return true;
+				elseif a.active and b.active and not a.isInfinite then
 					return (a.tmpBL > b.tmpBL);
 				end
 				return false;
@@ -503,7 +618,9 @@ function f:ArrangeBuffs(throttle, id)
 			table.sort(sdTimer, function(a,b)
 				if a.active == true and b.active == false then
 					return true;
-				elseif a.active and b.active then
+				elseif a.active and b.active and a.isInfinite then
+					return true;
+				elseif a.active and b.active and not a.isInfinite then
 					return (a.tmpBL > b.tmpBL);
 				end
 				return false;
@@ -513,7 +630,9 @@ function f:ArrangeBuffs(throttle, id)
 			table.sort(sdTimer, function(a,b)
 				if a.active == true and b.active == false then
 					return true;
-				elseif a.active and b.active then
+				elseif a.active and b.active and b.isInfinite then
+					return false;
+				elseif a.active and b.active and not b.isInfinite then
 					return (a.tmpBL < b.tmpBL);
 				end
 				return false;
@@ -540,71 +659,54 @@ end
 ----------------------
 	
 function f:SaveLayout(frame)
-
+	if type(frame) ~= "string" then return end
+	if not _G[frame] then return end
 	if not XBT_DB then XBT_DB = {} end
+	
+	local opt = XBT_DB[frame] or nil
 
-	local opt = XBT_DB[frame] or nil;
-
-	if opt == nil then
+	if not opt then
 		XBT_DB[frame] = {
 			["point"] = "CENTER",
 			["relativePoint"] = "CENTER",
-			["PosX"] = 0,
-			["PosY"] = 0,
+			["xOfs"] = 0,
+			["yOfs"] = 0,
 		}
-		opt = XBT_DB[frame];
+		opt = XBT_DB[frame]
+		return
 	end
 
-	local f = getglobal(frame);
-	local scale = f:GetEffectiveScale();
-	opt.PosX = f:GetLeft() * scale;
-	opt.PosY = f:GetTop() * scale;
-	
+	local point, relativeTo, relativePoint, xOfs, yOfs = _G[frame]:GetPoint()
+	opt.point = point
+	opt.relativePoint = relativePoint
+	opt.xOfs = xOfs
+	opt.yOfs = yOfs
 end
 
 function f:RestoreLayout(frame)
-
+	if type(frame) ~= "string" then return end
+	if not _G[frame] then return end
 	if not XBT_DB then XBT_DB = {} end
-	
-	local f = getglobal(frame);
-	local opt = XBT_DB[frame] or nil;
 
-	if opt == nil then
+	local opt = XBT_DB[frame] or nil
+
+	if not opt then
 		XBT_DB[frame] = {
 			["point"] = "CENTER",
 			["relativePoint"] = "CENTER",
-			["PosX"] = 0,
-			["PosY"] = 0,
-			["firsttime"] = true,
+			["xOfs"] = 0,
+			["yOfs"] = 0,
 		}
 		opt = XBT_DB[frame]
 	end
 
-	local x = opt.PosX;
-	local y = opt.PosY;
-	local s = f:GetEffectiveScale()
-
-	if opt.firsttime then
-		f:ClearAllPoints()
-		f:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
-		if opt.firsttime then opt.firsttime = nil end
-		return 
-	end
-
-	--calculate the scale
-	x,y = x/s, y/s
-
-	--set the location
-	f:ClearAllPoints()
-	f:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", x, y)
-
+	_G[frame]:ClearAllPoints()
+	_G[frame]:SetPoint(opt.point, UIParent, opt.relativePoint, opt.xOfs, opt.yOfs)
 end
 
 function f:getBarColor(dur, expR)
 	if dur <= 0 then
-		--this will make the bar green
-		dur = 1
-		expR = 1
+		return 0, 183/255, 239/255
 	end
 	local r
 	local g = 1

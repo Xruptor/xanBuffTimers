@@ -174,7 +174,7 @@ function f:PLAYER_LOGIN()
 		end
 
 		DEFAULT_CHAT_FRAME:AddMessage("xanBuffTimers")
-		DEFAULT_CHAT_FRAME:AddMessage("/xbt anchor - toggles a movable anchor")
+		DEFAULT_CHAT_FRAME:AddMessage("/xbt anchor - toggles the movable anchor frames")
 		DEFAULT_CHAT_FRAME:AddMessage("/xbt scale # - sets the scale size of the bars")
 		DEFAULT_CHAT_FRAME:AddMessage("/xbt grow - changes the direction in which the bars grow (UP/DOWN)")
 		DEFAULT_CHAT_FRAME:AddMessage("/xbt sort - changes the sorting of the bars. (ASCENDING/DESCENDING)")

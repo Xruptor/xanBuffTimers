@@ -18,7 +18,7 @@ local UnitGUID = UnitGUID
 local UnitName = UnitName
 
 local pointT = {
-	["target"] = "XBT_Anchor",
+	["target"] = "XBT_TargetAnchor",
 	["focus"] = "XBT_FocusAnchor",
 	["player"] = "XBT_PlayerAnchor",
 }
@@ -62,7 +62,7 @@ function f:PLAYER_LOGIN()
 	
 	
 	--create our anchors
-	f:CreateAnchor("XBT_Anchor", UIParent, "xanBuffTimers: Target Anchor")
+	f:CreateAnchor("XBT_TargetAnchor", UIParent, "xanBuffTimers: Target Anchor")
 	f:CreateAnchor("XBT_FocusAnchor", UIParent, "xanBuffTimers: Focus Anchor")
 	f:CreateAnchor("XBT_PlayerAnchor", UIParent, "xanBuffTimers: Player Anchor")
 
@@ -88,12 +88,12 @@ function f:PLAYER_LOGIN()
 		
 		if a then
 			if c and c:lower() == "anchor" then
-				if XBT_Anchor:IsVisible() then
-					XBT_Anchor:Hide()
+				if XBT_TargetAnchor:IsVisible() then
+					XBT_TargetAnchor:Hide()
 					XBT_FocusAnchor:Hide()
 					XBT_PlayerAnchor:Hide()
 				else
-					XBT_Anchor:Show()
+					XBT_TargetAnchor:Show()
 					XBT_FocusAnchor:Show()
 					XBT_PlayerAnchor:Show()
 				end
@@ -458,14 +458,14 @@ function f:generateBars()
 	for i=1, MAX_TIMERS do
 		if XBT_DB.grow then
 			timersTarget[i]:ClearAllPoints()
-			timersTarget[i]:SetPoint("TOPLEFT", XBT_Anchor, "BOTTOMRIGHT", 0, adj)
+			timersTarget[i]:SetPoint("TOPLEFT", XBT_TargetAnchor, "BOTTOMRIGHT", 0, adj)
 			timersFocus[i]:ClearAllPoints()
 			timersFocus[i]:SetPoint("TOPLEFT", XBT_FocusAnchor, "BOTTOMRIGHT", 0, adj)
 			timersPlayer[i]:ClearAllPoints()
 			timersPlayer[i]:SetPoint("TOPLEFT", XBT_PlayerAnchor, "BOTTOMRIGHT", 0, adj)			
 		else
 			timersTarget[i]:ClearAllPoints()
-			timersTarget[i]:SetPoint("BOTTOMLEFT", XBT_Anchor, "TOPRIGHT", 0, (adj * -1))
+			timersTarget[i]:SetPoint("BOTTOMLEFT", XBT_TargetAnchor, "TOPRIGHT", 0, (adj * -1))
 			timersFocus[i]:ClearAllPoints()
 			timersFocus[i]:SetPoint("BOTTOMLEFT", XBT_FocusAnchor, "TOPRIGHT", 0, (adj * -1))
 			timersPlayer[i]:ClearAllPoints()
@@ -481,14 +481,14 @@ function f:adjustBars()
 	for i=1, MAX_TIMERS do
 		if XBT_DB.grow then
 			timersTarget[i]:ClearAllPoints()
-			timersTarget[i]:SetPoint("TOPLEFT", XBT_Anchor, "BOTTOMRIGHT", 0, adj)
+			timersTarget[i]:SetPoint("TOPLEFT", XBT_TargetAnchor, "BOTTOMRIGHT", 0, adj)
 			timersFocus[i]:ClearAllPoints()
 			timersFocus[i]:SetPoint("TOPLEFT", XBT_FocusAnchor, "BOTTOMRIGHT", 0, adj)
 			timersPlayer[i]:ClearAllPoints()
 			timersPlayer[i]:SetPoint("TOPLEFT", XBT_PlayerAnchor, "BOTTOMRIGHT", 0, adj)			
 		else
 			timersTarget[i]:ClearAllPoints()
-			timersTarget[i]:SetPoint("BOTTOMLEFT", XBT_Anchor, "TOPRIGHT", 0, (adj * -1))
+			timersTarget[i]:SetPoint("BOTTOMLEFT", XBT_TargetAnchor, "TOPRIGHT", 0, (adj * -1))
 			timersFocus[i]:ClearAllPoints()
 			timersFocus[i]:SetPoint("BOTTOMLEFT", XBT_FocusAnchor, "TOPRIGHT", 0, (adj * -1))
 			timersPlayer[i]:ClearAllPoints()
@@ -599,10 +599,10 @@ function f:ProcessBuffs(id)
 			local barPercent = 0
 		
 			if isInfinite then
-				barPercent = 200 --anything higher than 100 will get pushed to top of list, so lets make it 200
+				barPercent = 200 --anything higher than 100 will get pushed to top of list, so lets make it 200 -> f:ShowBuffs(id)
 				duration = 0
 				expTime = 0
-				totalBarLength = string.len(BAR_TEXT)
+				totalBarLength = string.len(BAR_TEXT) --just make it full bar length, it will never decrease anyways
 			else
 				beforeEnd = expTime - GetTime()
 				startTime = (expTime - duration)

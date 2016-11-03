@@ -763,7 +763,6 @@ function f:ShowBuffs(id)
 			
 			sdTimer[i]:Show()
 		else
-			sdTimer.buffs[i].active = false  --just in case
 			sdTimer[i]:Hide()
 		end
     end

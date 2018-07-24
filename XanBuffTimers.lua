@@ -282,7 +282,12 @@ local eventSwitch = {
 	["DAMAGE_SPLIT"] = true,
 }
 
-function f:COMBAT_LOG_EVENT_UNFILTERED(event, timestamp, eventType, hideCaster, sourceGUID, sourceName, srcFlags, sourceRaidFlags, dstGUID, destName, destFlags, destRaidFlags, spellID, spellName, spellSchool, auraType, amount)
+local CombatLogGetCurrentEventInfo = CombatLogGetCurrentEventInfo
+
+function f:COMBAT_LOG_EVENT_UNFILTERED()
+
+	--local timestamp, eventType, hideCaster, sourceGUID, sourceName, srcFlags, sourceRaidFlags, dstGUID, destName, destFlags, destRaidFlags, spellID, spellName, spellSchool, auraType, amount
+	local timestamp, eventType, _, sourceGUID, _, srcFlags, _, dstGUID = CombatLogGetCurrentEventInfo()
 
     if eventType == "UNIT_DIED" or eventType == "UNIT_DESTROYED" then
 		--clear the buffs if the unit died
@@ -572,7 +577,7 @@ function f:ProcessBuffs(id)
 	local sdTimer = timerList[id] --makes things easier to read
 	
 	for i=1, MAX_TIMERS do
-		local name, _, icon, count, _, duration, expTime, unitCaster, _, _, spellId = UnitAura(id, i, 'PLAYER|HELPFUL')
+		local name, icon, count, debuffType, duration, expTime, unitCaster, canStealOrPurge, nameplateShowPersonal, spellId = UnitAura(id, i, 'PLAYER|HELPFUL')
 		
 		local passChk = false
 		local isInfinite = false

@@ -56,6 +56,8 @@ addon.timersTarget.buffs = {}
 addon.timersFocus.buffs = {}
 addon.timersPlayer.buffs = {}
 
+local barsLoaded = false
+
 ----------------------
 --      Enable      --
 ----------------------
@@ -414,10 +416,13 @@ function addon:generateBars()
 		end
 		adj = adj - BAR_ADJUST
     end
-
+	
+	barsLoaded = true
 end
 
 function addon:adjustBars()
+	if not barsLoaded then return end
+	
 	local adj = 0
 	for i=1, addon.MAX_TIMERS do
 		if XBT_DB.grow then
@@ -481,6 +486,8 @@ addon:SetScript("OnUpdate", function(self, elapsed)
 	local fCount = 0
 	local pCount = 0
 	
+	if not barsLoaded then return end
+	
 	for i=1, addon.MAX_TIMERS do
 		if addon.timersTarget.buffs[i].active then
 			self:ProcessBuffBar(addon.timersTarget.buffs[i])
@@ -510,6 +517,7 @@ addon:SetScript("OnUpdate", function(self, elapsed)
 end)
 
 function addon:ProcessBuffs(id)
+	if not barsLoaded then return end
 	
 	local class = select(2, UnitClass("player"))
 	
@@ -593,6 +601,8 @@ function addon:ProcessBuffs(id)
 end
 
 function addon:ClearBuffs(id)
+	if not barsLoaded then return end
+	
 	local sdTimer = timerList[id] --makes things easier to read
 	local adj = 0
 
@@ -622,7 +632,8 @@ function addon:ReloadBuffs()
 end
 
 function addon:ShowBuffs(id)
-
+	if not barsLoaded then return end
+	
 	if locked then return end
 	locked = true
 	

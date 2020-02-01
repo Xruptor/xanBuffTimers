@@ -9,6 +9,7 @@ local configEvent = addon.configEvent
 configEvent:SetScript("OnEvent", function(self, event, ...) if self[event] then return self[event](self, event, ...) end end)
 
 local L = LibStub("AceLocale-3.0"):GetLocale(ADDON_NAME)
+local isRetail = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
 
 local lastObject
 local function addConfigEntry(objEntry, adjustX, adjustY)
@@ -148,12 +149,16 @@ function configEvent:PLAYER_LOGIN()
 	btnAnchor.func = function()
 		if XBT_TargetAnchor:IsVisible() then
 			XBT_TargetAnchor:Hide()
-			XBT_FocusAnchor:Hide()
+			if isRetail then
+				XBT_FocusAnchor:Hide()
+			end
 			XBT_PlayerAnchor:Hide()
 			DEFAULT_CHAT_FRAME:AddMessage(L.SlashAnchorOff)
 		else
 			XBT_TargetAnchor:Show()
-			XBT_FocusAnchor:Show()
+			if isRetail then
+				XBT_FocusAnchor:Show()
+			end
 			XBT_PlayerAnchor:Show()
 			DEFAULT_CHAT_FRAME:AddMessage(L.SlashAnchorOn)
 		end
@@ -169,8 +174,10 @@ function configEvent:PLAYER_LOGIN()
 		DEFAULT_CHAT_FRAME:AddMessage(L.SlashResetAlert)
 		XBT_TargetAnchor:ClearAllPoints()
 		XBT_TargetAnchor:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
-		XBT_FocusAnchor:ClearAllPoints()
-		XBT_FocusAnchor:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+		if isRetail then
+			XBT_FocusAnchor:ClearAllPoints()
+			XBT_FocusAnchor:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+		end
 		XBT_PlayerAnchor:ClearAllPoints()
 		XBT_PlayerAnchor:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 	end
@@ -194,7 +201,7 @@ function configEvent:PLAYER_LOGIN()
 			if addon.timersTarget[i] then
 				addon.timersTarget[i]:SetScale(XBT_DB.scale)
 			end
-			if addon.timersFocus[i] then
+			if isRetail and addon.timersFocus[i] then
 				addon.timersFocus[i]:SetScale(XBT_DB.scale)
 			end
 			if addon.timersPlayer[i] then
@@ -211,7 +218,7 @@ function configEvent:PLAYER_LOGIN()
 			if addon.timersTarget[i] then
 				addon.timersTarget[i]:SetScale(tonumber(value) / 100)
 			end
-			if addon.timersFocus[i] then
+			if isRetail and addon.timersFocus[i] then
 				addon.timersFocus[i]:SetScale(tonumber(value) / 100)
 			end
 			if addon.timersPlayer[i] then
@@ -291,27 +298,29 @@ function configEvent:PLAYER_LOGIN()
 	addConfigEntry(btnTarget, 0, -13)
 	addon.aboutPanel.btnTarget = btnTarget
 	
-	--focus
-	local btnFocus = createCheckbutton(addon.aboutPanel, L.SlashFocusChkBtn)
-	btnFocus:SetScript("OnShow", function() btnFocus:SetChecked(XBT_DB.showFocus) end)
-	btnFocus.func = function(slashSwitch)
-		local value = XBT_DB.showFocus
-		if not slashSwitch then value = btnFocus:GetChecked() end
+	if isRetail then
+		--focus
+		local btnFocus = createCheckbutton(addon.aboutPanel, L.SlashFocusChkBtn)
+		btnFocus:SetScript("OnShow", function() btnFocus:SetChecked(XBT_DB.showFocus) end)
+		btnFocus.func = function(slashSwitch)
+			local value = XBT_DB.showFocus
+			if not slashSwitch then value = btnFocus:GetChecked() end
 
-		if value then
-			XBT_DB.showFocus = false
-			DEFAULT_CHAT_FRAME:AddMessage(L.SlashFocusOff)
-		else
-			XBT_DB.showFocus = true
-			DEFAULT_CHAT_FRAME:AddMessage(L.SlashFocusOn)
+			if value then
+				XBT_DB.showFocus = false
+				DEFAULT_CHAT_FRAME:AddMessage(L.SlashFocusOff)
+			else
+				XBT_DB.showFocus = true
+				DEFAULT_CHAT_FRAME:AddMessage(L.SlashFocusOn)
+			end
+			
+			addon:ReloadBuffs()
 		end
+		btnFocus:SetScript("OnClick", btnFocus.func)
 		
-		addon:ReloadBuffs()
+		addConfigEntry(btnFocus, 0, -13)
+		addon.aboutPanel.btnFocus = btnFocus
 	end
-	btnFocus:SetScript("OnClick", btnFocus.func)
-	
-	addConfigEntry(btnFocus, 0, -13)
-	addon.aboutPanel.btnFocus = btnFocus
 	
 	--player
 	local btnPlayer = createCheckbutton(addon.aboutPanel, L.SlashPlayerChkBtn)
@@ -423,16 +432,16 @@ function configEvent:PLAYER_LOGIN()
 	addConfigEntry(btnHealers, 0, -13)
 	addon.aboutPanel.btnHealers = btnHealers
 	
-	--reload debuffs
-	local btnReloadDebuffs = createButton(addon.aboutPanel, L.SlashReloadText)
-	btnReloadDebuffs.func = function()
-		addon:ReloadDebuffs()
+	--reload buffs
+	local btnReloadBuffs = createButton(addon.aboutPanel, L.SlashReloadText)
+	btnReloadBuffs.func = function()
+		addon:ReloadBuffs()
 		DEFAULT_CHAT_FRAME:AddMessage(L.SlashReloadAlert)
 	end
-	btnReloadDebuffs:SetScript("OnClick", btnReloadDebuffs.func)
+	btnReloadBuffs:SetScript("OnClick", btnReloadBuffs.func)
 	
-	addConfigEntry(btnReloadDebuffs, 0, -20)
-	addon.aboutPanel.btnReloadDebuffs = btnReloadDebuffs
+	addConfigEntry(btnReloadBuffs, 0, -20)
+	addon.aboutPanel.btnReloadBuffs = btnReloadBuffs
 	
 	configEvent:UnregisterEvent("PLAYER_LOGIN")
 end

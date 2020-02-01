@@ -13,6 +13,17 @@ local function Debug(...)
 end
 
 local L = LibStub("AceLocale-3.0"):GetLocale(ADDON_NAME)
+local LibClassicDurations = LibStub("LibClassicDurations", true)
+
+local isRetail = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
+local UnitAura = _G.UnitAura
+
+--wrap the UnitAura function if addon is running in classic
+--Aura does not provide duration or expiration in classic.
+if not isRetail and LibClassicDurations then
+    LibClassicDurations:Register("xanBuffTimers")
+    UnitAura = LibClassicDurations.UnitAuraWrapper
+end
 
 addon.timersTarget = {}
 addon.timersFocus = {}
@@ -38,12 +49,6 @@ local UnitAura = UnitAura
 local UnitIsUnit = UnitIsUnit
 local UnitGUID = UnitGUID
 local UnitName = UnitName
-
-local pointT = {
-	["target"] = "XBT_TargetAnchor",
-	["focus"] = "XBT_FocusAnchor",
-	["player"] = "XBT_PlayerAnchor",
-}
 
 local timerList = {
 	["target"] = addon.timersTarget,
@@ -79,7 +84,9 @@ function addon:PLAYER_LOGIN()
 	
 	--create our anchors
 	addon:CreateAnchor("XBT_TargetAnchor", UIParent, L.BarTargetAnchor)
-	addon:CreateAnchor("XBT_FocusAnchor", UIParent, L.BarFocusAnchor)
+	if isRetail then
+		addon:CreateAnchor("XBT_FocusAnchor", UIParent, L.BarFocusAnchor)
+	end
 	addon:CreateAnchor("XBT_PlayerAnchor", UIParent, L.BarPlayerAnchor)
 
 	--
@@ -93,7 +100,9 @@ function addon:PLAYER_LOGIN()
 	
 	addon:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 	addon:RegisterEvent("PLAYER_TARGET_CHANGED")
-	addon:RegisterEvent("PLAYER_FOCUS_CHANGED")
+	if isRetail then
+		addon:RegisterEvent("PLAYER_FOCUS_CHANGED")
+	end
 
 	SLASH_XANBUFFTIMERS1 = "/xbt"
 	SlashCmdList["XANBUFFTIMERS"] = function(cmd)
@@ -126,7 +135,7 @@ function addon:PLAYER_LOGIN()
 			elseif c and c:lower() == L.SlashTarget then
 				addon.aboutPanel.btnTarget.func(true)
 				return true
-			elseif c and c:lower() == L.SlashFocus then
+			elseif c and c:lower() == L.SlashFocus and isRetail then
 				addon.aboutPanel.btnFocus.func(true)
 				return true
 			elseif c and c:lower() == L.SlashPlayer then
@@ -157,7 +166,9 @@ function addon:PLAYER_LOGIN()
 		DEFAULT_CHAT_FRAME:AddMessage("/xbt "..L.SlashGrow.." - "..L.SlashGrowInfo)
 		DEFAULT_CHAT_FRAME:AddMessage("/xbt "..L.SlashSort.." - "..L.SlashSortInfo)
 		DEFAULT_CHAT_FRAME:AddMessage("/xbt "..L.SlashTarget.." - "..L.SlashTargetInfo)
-		DEFAULT_CHAT_FRAME:AddMessage("/xbt "..L.SlashFocus.." - "..L.SlashFocusInfo)
+		if isRetail then
+			DEFAULT_CHAT_FRAME:AddMessage("/xbt "..L.SlashFocus.." - "..L.SlashFocusInfo)
+		end
 		DEFAULT_CHAT_FRAME:AddMessage("/xbt "..L.SlashPlayer.." - "..L.SlashPlayerInfo)
 		DEFAULT_CHAT_FRAME:AddMessage("/xbt "..L.SlashInfinite.." - "..L.SlashInfiniteInfo)
 		DEFAULT_CHAT_FRAME:AddMessage("/xbt "..L.SlashIcon.." - "..L.SlashIconInfo)
@@ -169,6 +180,9 @@ function addon:PLAYER_LOGIN()
 	
 	local ver = GetAddOnMetadata(ADDON_NAME,"Version") or '1.0'
 	DEFAULT_CHAT_FRAME:AddMessage(string.format("|cFF99CC33%s|r [v|cFF20ff20%s|r] loaded:   /xbt", ADDON_NAME, ver or "1.0"))
+	
+	--reload all our buffs on login
+	addon:ReloadBuffs()
 end
 	
 function addon:PLAYER_TARGET_CHANGED()
@@ -183,6 +197,7 @@ function addon:PLAYER_TARGET_CHANGED()
 end
 
 function addon:PLAYER_FOCUS_CHANGED()
+	if not isRetail then return end
 	if not XBT_DB.showFocus then return end
 	if UnitName("focus") and UnitGUID("focus") then
 		focusGUID = UnitGUID("focus")
@@ -235,7 +250,7 @@ function addon:COMBAT_LOG_EVENT_UNFILTERED()
 			addon:ClearBuffs("target")
 			targetGUID = 0
 		end
-		if dstGUID == focusGUID and XBT_DB.showFocus then
+		if isRetail and dstGUID == focusGUID and XBT_DB.showFocus then
 			addon:ClearBuffs("focus")
 			focusGUID = 0
 		end
@@ -248,7 +263,7 @@ function addon:COMBAT_LOG_EVENT_UNFILTERED()
 		if dstGUID == targetGUID and XBT_DB.showTarget then
 			addon:ProcessBuffs("target")
 		end
-		if dstGUID == focusGUID and XBT_DB.showFocus then
+		if isRetail and dstGUID == focusGUID and XBT_DB.showFocus then
 			addon:ProcessBuffs("focus")
 		end
 		if dstGUID == playerGUID and XBT_DB.showPlayer then
@@ -376,7 +391,7 @@ function addon:CreateBuffTimers()
 	Frm.Bar = Frm:CreateFontString(nil, "GameFontNormal")
 	Frm.Bar:SetFont(STANDARD_TEXT_FONT, 14, "OUTLINE, MONOCHROME")
 	Frm.Bar:SetText(BAR_TEXT)
-	Frm.Bar:SetPoint("LEFT", Frm.icon, "RIGHT", 30, 0)
+	Frm.Bar:SetPoint("LEFT", Frm.icon, "RIGHT", 33, 0)
 	
 	Frm:Hide()
     
@@ -390,10 +405,14 @@ function addon:generateBars()
 	--lets create the max bars to use on screen for future sorting
 	for i=1, addon.MAX_TIMERS do
 		addon.timersTarget[i] = addon:CreateBuffTimers()
-		addon.timersFocus[i] = addon:CreateBuffTimers()
-		addon.timersPlayer[i] = addon:CreateBuffTimers()
 		if not addon.timersTarget.buffs[i] then addon.timersTarget.buffs[i] = {} end
-		if not addon.timersFocus.buffs[i] then addon.timersFocus.buffs[i] = {} end
+		
+		if isRetail then
+			addon.timersFocus[i] = addon:CreateBuffTimers()
+			if not addon.timersFocus.buffs[i] then addon.timersFocus.buffs[i] = {} end
+		end
+		
+		addon.timersPlayer[i] = addon:CreateBuffTimers()
 		if not addon.timersPlayer.buffs[i] then addon.timersPlayer.buffs[i] = {} end
 	end
 		
@@ -402,15 +421,19 @@ function addon:generateBars()
 		if XBT_DB.grow then
 			addon.timersTarget[i]:ClearAllPoints()
 			addon.timersTarget[i]:SetPoint("TOPLEFT", XBT_TargetAnchor, "BOTTOMRIGHT", 0, adj)
-			addon.timersFocus[i]:ClearAllPoints()
-			addon.timersFocus[i]:SetPoint("TOPLEFT", XBT_FocusAnchor, "BOTTOMRIGHT", 0, adj)
+			if isRetail then
+				addon.timersFocus[i]:ClearAllPoints()
+				addon.timersFocus[i]:SetPoint("TOPLEFT", XBT_FocusAnchor, "BOTTOMRIGHT", 0, adj)
+			end
 			addon.timersPlayer[i]:ClearAllPoints()
 			addon.timersPlayer[i]:SetPoint("TOPLEFT", XBT_PlayerAnchor, "BOTTOMRIGHT", 0, adj)			
 		else
 			addon.timersTarget[i]:ClearAllPoints()
 			addon.timersTarget[i]:SetPoint("BOTTOMLEFT", XBT_TargetAnchor, "TOPRIGHT", 0, (adj * -1))
-			addon.timersFocus[i]:ClearAllPoints()
-			addon.timersFocus[i]:SetPoint("BOTTOMLEFT", XBT_FocusAnchor, "TOPRIGHT", 0, (adj * -1))
+			if isRetail then
+				addon.timersFocus[i]:ClearAllPoints()
+				addon.timersFocus[i]:SetPoint("BOTTOMLEFT", XBT_FocusAnchor, "TOPRIGHT", 0, (adj * -1))
+			end
 			addon.timersPlayer[i]:ClearAllPoints()
 			addon.timersPlayer[i]:SetPoint("BOTTOMLEFT", XBT_PlayerAnchor, "TOPRIGHT", 0, (adj * -1))
 		end
@@ -428,15 +451,19 @@ function addon:adjustBars()
 		if XBT_DB.grow then
 			addon.timersTarget[i]:ClearAllPoints()
 			addon.timersTarget[i]:SetPoint("TOPLEFT", XBT_TargetAnchor, "BOTTOMRIGHT", 0, adj)
-			addon.timersFocus[i]:ClearAllPoints()
-			addon.timersFocus[i]:SetPoint("TOPLEFT", XBT_FocusAnchor, "BOTTOMRIGHT", 0, adj)
+			if isRetail then
+				addon.timersFocus[i]:ClearAllPoints()
+				addon.timersFocus[i]:SetPoint("TOPLEFT", XBT_FocusAnchor, "BOTTOMRIGHT", 0, adj)
+			end
 			addon.timersPlayer[i]:ClearAllPoints()
 			addon.timersPlayer[i]:SetPoint("TOPLEFT", XBT_PlayerAnchor, "BOTTOMRIGHT", 0, adj)			
 		else
 			addon.timersTarget[i]:ClearAllPoints()
 			addon.timersTarget[i]:SetPoint("BOTTOMLEFT", XBT_TargetAnchor, "TOPRIGHT", 0, (adj * -1))
-			addon.timersFocus[i]:ClearAllPoints()
-			addon.timersFocus[i]:SetPoint("BOTTOMLEFT", XBT_FocusAnchor, "TOPRIGHT", 0, (adj * -1))
+			if isRetail then
+				addon.timersFocus[i]:ClearAllPoints()
+				addon.timersFocus[i]:SetPoint("BOTTOMLEFT", XBT_FocusAnchor, "TOPRIGHT", 0, (adj * -1))
+			end
 			addon.timersPlayer[i]:ClearAllPoints()
 			addon.timersPlayer[i]:SetPoint("BOTTOMLEFT", XBT_PlayerAnchor, "TOPRIGHT", 0, (adj * -1))
 		end
@@ -493,7 +520,7 @@ addon:SetScript("OnUpdate", function(self, elapsed)
 			self:ProcessBuffBar(addon.timersTarget.buffs[i])
 			tCount = tCount + 1
 		end
-		if addon.timersFocus.buffs[i].active then
+		if isRetail and addon.timersFocus.buffs[i].active then
 			self:ProcessBuffBar(addon.timersFocus.buffs[i])
 			fCount = fCount + 1
 		end
@@ -507,7 +534,7 @@ addon:SetScript("OnUpdate", function(self, elapsed)
 	if tCount > 0 then
 		addon:ShowBuffs("target")
 	end
-	if fCount > 0 then
+	if isRetail and fCount > 0 then
 		addon:ShowBuffs("focus")
 	end
 	if pCount > 0 then
@@ -617,13 +644,15 @@ function addon:ReloadBuffs()
 	local class = select(2, UnitClass("player"))
 
 	addon:ClearBuffs("target")
-	addon:ClearBuffs("focus")
+	if isRetail then
+		addon:ClearBuffs("focus")
+	end
 	addon:ClearBuffs("player")
 	
 	if XBT_DB.showTarget then
 		addon:ProcessBuffs("target")
 	end
-	if XBT_DB.showFocus then
+	if isRetail and XBT_DB.showFocus then
 		addon:ProcessBuffs("focus")
 	end
 	if XBT_DB.showPlayer then
@@ -642,7 +671,7 @@ function addon:ShowBuffs(id)
 
 	if id == "target" then
 		sdTimer = addon.timersTarget
-	elseif id == "focus" then
+	elseif id == "focus" and isRetail then
 		sdTimer = addon.timersFocus
 	elseif id == "player" then
 		sdTimer = addon.timersPlayer

@@ -1,15 +1,22 @@
+#@retail@
 ## Interface: 80300
+#@end-retail@
+#@non-retail@
+# ## Interface: 11303
+#@end-non-retail@
 ## Title: xanBuffTimers
 ## Notes: A small text based progress bar system for target/focus/player buffs.
 ## Author: Xruptor
-## Version: 4.4
+## Version: 4.5
 ## X-Curse-Project-ID: 28655
 ## X-WoWI-ID: 19255
 ## OptionalDeps: tekDebug
 ## SavedVariablesPerCharacter: XBT_DB
 
 libs\LibStub\LibStub.lua
+libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
 libs\AceLocale-3.0\AceLocale-3.0.xml
+libs\LibClassicDurations\LibClassicDurations.xml
 
 locale\enUS.lua
 

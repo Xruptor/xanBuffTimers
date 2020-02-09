@@ -572,15 +572,15 @@ function addon:ProcessBuffs(id)
 		if XBT_DB.showInfinite then
 			--auras are on so basically were allowing everything
 			passChk = true
-			if not duration or duration <= 0 then 
+			if not duration or duration <= 0 or not expTime or expTime <= 0 then
 				isInfinite = true
 			end
-		elseif not XBT_DB.showInfinite and duration and duration > 0 then 
+		end
+		if not XBT_DB.showInfinite and duration and duration > 0 then 
 			--auras are not on but the duration is greater then zero, so allow
 			passChk = true
 		end
 		
-		--check for duration > 0 for the evil DIVIDE BY ZERO
 		if name and passChk then
 			local beforeEnd = 0
 			local startTime = 0
@@ -714,7 +714,7 @@ function addon:ShowBuffs(id)
 			--display the information
 			---------------------------------------
 			sdTimer[i].Bar:SetText( string.sub(BAR_TEXT, 1, tmpList[i].totalBarLength) )
-			sdTimer[i].Bar:SetTextColor(addon:getBarColor(tmpList[i].durationTime, tmpList[i].beforeEnd))
+			
 			if XBT_DB.showIcon then
 				sdTimer[i].icon:SetTexture(tmpList[i].iconTex)
 				sdTimer[i].spellText2:SetText("")
@@ -740,8 +740,10 @@ function addon:ShowBuffs(id)
 			end
 			if tmpList[i].isInfinite then
 				sdTimer[i].timetext:SetText("∞")
+				sdTimer[i].Bar:SetTextColor(128/255,128/255,128/255)
 			else
 				sdTimer[i].timetext:SetText(addon:GetTimeText(ceil(tmpList[i].beforeEnd)))
+				sdTimer[i].Bar:SetTextColor(addon:getBarColor(tmpList[i].durationTime, tmpList[i].beforeEnd))
 			end
 			---------------------------------------
 			

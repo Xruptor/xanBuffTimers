@@ -7,7 +7,7 @@
 ## Title: xanBuffTimers
 ## Notes: A small text based progress bar system for target/focus/player buffs.
 ## Author: Xruptor
-## Version: 4.8
+## Version: 4.9
 ## X-Curse-Project-ID: 28655
 ## X-WoWI-ID: 19255
 ## OptionalDeps: tekDebug

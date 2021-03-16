@@ -153,6 +153,7 @@ function configEvent:PLAYER_LOGIN()
 				XBT_FocusAnchor:Hide()
 			end
 			XBT_PlayerAnchor:Hide()
+			XBT_SupportAnchor:Hide()
 			DEFAULT_CHAT_FRAME:AddMessage(L.SlashAnchorOff)
 		else
 			XBT_TargetAnchor:Show()
@@ -160,6 +161,7 @@ function configEvent:PLAYER_LOGIN()
 				XBT_FocusAnchor:Show()
 			end
 			XBT_PlayerAnchor:Show()
+			XBT_SupportAnchor:Show()
 			DEFAULT_CHAT_FRAME:AddMessage(L.SlashAnchorOn)
 		end
 	end
@@ -180,6 +182,8 @@ function configEvent:PLAYER_LOGIN()
 		end
 		XBT_PlayerAnchor:ClearAllPoints()
 		XBT_PlayerAnchor:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+		XBT_SupportAnchor:ClearAllPoints()
+		XBT_SupportAnchor:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 	end
 	btnReset:SetScript("OnClick", btnReset.func)
 	
@@ -206,6 +210,9 @@ function configEvent:PLAYER_LOGIN()
 			end
 			if addon.timersPlayer[i] then
 				addon.timersPlayer[i]:SetScale(XBT_DB.scale)
+			end
+			if addon.timersSupport[i] then
+				addon.timersSupport[i]:SetScale(XBT_DB.scale)
 			end				
 		end
 	end
@@ -223,6 +230,9 @@ function configEvent:PLAYER_LOGIN()
 			end
 			if addon.timersPlayer[i] then
 				addon.timersPlayer[i]:SetScale(tonumber(value) / 100)
+			end
+			if addon.timersSupport[i] then
+				addon.timersSupport[i]:SetScale(tonumber(value) / 100)
 			end	
 		end
 	end
@@ -344,6 +354,28 @@ function configEvent:PLAYER_LOGIN()
 	addConfigEntry(btnPlayer, 0, -13)
 	addon.aboutPanel.btnPlayer = btnPlayer
 	
+	--support
+	local btnSupport = createCheckbutton(addon.aboutPanel, L.SlashSupportChkBtn)
+	btnSupport:SetScript("OnShow", function() btnSupport:SetChecked(XBT_DB.showSupport) end)
+	btnSupport.func = function(slashSwitch)
+		local value = XBT_DB.showSupport
+		if not slashSwitch then value = btnSupport:GetChecked() end
+
+		if value then
+			XBT_DB.showSupport = false
+			DEFAULT_CHAT_FRAME:AddMessage(L.SlashPlayerOff)
+		else
+			XBT_DB.showSupport = true
+			DEFAULT_CHAT_FRAME:AddMessage(L.SlashPlayerOn)
+		end
+		
+		addon:ReloadBuffs()
+	end
+	btnSupport:SetScript("OnClick", btnSupport.func)
+	
+	addConfigEntry(btnSupport, 0, -13)
+	addon.aboutPanel.btnSupport = btnSupport
+	
 	--infinite
 	local btnInfinite = createCheckbutton(addon.aboutPanel, L.SlashInfiniteChkBtn)
 	btnInfinite:SetScript("OnShow", function() btnInfinite:SetChecked(XBT_DB.showInfinite) end)
@@ -440,7 +472,7 @@ function configEvent:PLAYER_LOGIN()
 	end
 	btnReloadBuffs:SetScript("OnClick", btnReloadBuffs.func)
 	
-	addConfigEntry(btnReloadBuffs, 0, -20)
+	addConfigEntry(btnReloadBuffs, 0, -15)
 	addon.aboutPanel.btnReloadBuffs = btnReloadBuffs
 	
 	configEvent:UnregisterEvent("PLAYER_LOGIN")

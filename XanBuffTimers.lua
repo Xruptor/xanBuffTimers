@@ -67,8 +67,8 @@ local locked = false
 local targetGUID = 0
 local focusGUID = 0
 local playerGUID = 0
-local supportGUID = 0
-local supportUnitID = 0
+local supportGUID
+local supportUnitID
 local UnitAura = UnitAura
 local UnitIsUnit = UnitIsUnit
 local UnitGUID = UnitGUID
@@ -135,6 +135,11 @@ function addon:CheckSupportGUID()
 	if sTargetGUID and sTargetUnitID then
 		tankGUID = sTargetGUID
 		unitID = sTargetUnitID
+	end
+	
+	--clear the buffs if we have nothing to work with
+	if not tankGUID or not unitID then
+		addon:ClearBuffs("support")
 	end
 	
 	return tankGUID, unitID
@@ -682,7 +687,13 @@ addon:SetScript("OnUpdate", function(self, elapsed)
 		addon:ShowBuffs("player")
 	end
 	if sCount > 0 then
-		addon:ShowBuffs("support")
+		--if the player is not in anytype of group then clear the support bars
+		--they only are for party and raid
+		if not IsInGroup() then
+			addon:ClearBuffs("support")
+		else
+			addon:ShowBuffs("support")
+		end
 	end
 end)
 
@@ -707,13 +718,13 @@ function addon:ProcessBuffs(id)
 	local sdTimer = timerList[id] --makes things easier to read
 
 	if id == "support" then
-		if not supportGUID or supportGUID == 0 or not supportUnitID or supportUnitID == 0 then
+		if not supportGUID or not supportUnitID then
 			addon:ClearBuffs("support")
 			return
 		end
 		unitID = supportUnitID
 	end
-	
+
 	for i=1, addon.MAX_TIMERS do
 		local name, icon, count, debuffType, duration, expTime, unitCaster, canStealOrPurge, nameplateShowPersonal, spellId = UnitAura(unitID, i, 'PLAYER|HELPFUL')
 		

@@ -246,7 +246,7 @@ function configFrame:EnableConfig()
 	btnGrow:SetScript("OnShow", function() btnGrow:SetChecked(XBT_DB.grow) end)
 	btnGrow.func = function(slashSwitch)
 		local value = XBT_DB.grow
-		if not slashSwitch then value = btnGrow:GetChecked() end
+		if not slashSwitch then value = XBT_DB.grow end
 
 		if value then
 			XBT_DB.grow = false
@@ -268,7 +268,7 @@ function configFrame:EnableConfig()
 	btnSort:SetScript("OnShow", function() btnSort:SetChecked(XBT_DB.sort) end)
 	btnSort.func = function(slashSwitch)
 		local value = XBT_DB.sort
-		if not slashSwitch then value = btnSort:GetChecked() end
+		if not slashSwitch then value = XBT_DB.sort end
 
 		if value then
 			XBT_DB.sort = false
@@ -290,7 +290,7 @@ function configFrame:EnableConfig()
 	btnTarget:SetScript("OnShow", function() btnTarget:SetChecked(XBT_DB.showTarget) end)
 	btnTarget.func = function(slashSwitch)
 		local value = XBT_DB.showTarget
-		if not slashSwitch then value = btnTarget:GetChecked() end
+		if not slashSwitch then value = XBT_DB.showTarget end
 
 		if value then
 			XBT_DB.showTarget = false
@@ -313,7 +313,7 @@ function configFrame:EnableConfig()
 		btnFocus:SetScript("OnShow", function() btnFocus:SetChecked(XBT_DB.showFocus) end)
 		btnFocus.func = function(slashSwitch)
 			local value = XBT_DB.showFocus
-			if not slashSwitch then value = btnFocus:GetChecked() end
+			if not slashSwitch then value = XBT_DB.showFocus end
 
 			if value then
 				XBT_DB.showFocus = false
@@ -336,7 +336,7 @@ function configFrame:EnableConfig()
 	btnPlayer:SetScript("OnShow", function() btnPlayer:SetChecked(XBT_DB.showPlayer) end)
 	btnPlayer.func = function(slashSwitch)
 		local value = XBT_DB.showPlayer
-		if not slashSwitch then value = btnPlayer:GetChecked() end
+		if not slashSwitch then value = XBT_DB.showPlayer end
 
 		if value then
 			XBT_DB.showPlayer = false
@@ -358,7 +358,7 @@ function configFrame:EnableConfig()
 	btnSupport:SetScript("OnShow", function() btnSupport:SetChecked(XBT_DB.showSupport) end)
 	btnSupport.func = function(slashSwitch)
 		local value = XBT_DB.showSupport
-		if not slashSwitch then value = btnSupport:GetChecked() end
+		if not slashSwitch then value = XBT_DB.showSupport end
 
 		if value then
 			XBT_DB.showSupport = false
@@ -380,7 +380,7 @@ function configFrame:EnableConfig()
 	btnInfinite:SetScript("OnShow", function() btnInfinite:SetChecked(XBT_DB.showInfinite) end)
 	btnInfinite.func = function(slashSwitch)
 		local value = XBT_DB.showInfinite
-		if not slashSwitch then value = btnInfinite:GetChecked() end
+		if not slashSwitch then value = XBT_DB.showInfinite end
 
 		if value then
 			XBT_DB.showInfinite = false
@@ -402,7 +402,7 @@ function configFrame:EnableConfig()
 	btnIcon:SetScript("OnShow", function() btnIcon:SetChecked(XBT_DB.showIcon) end)
 	btnIcon.func = function(slashSwitch)
 		local value = XBT_DB.showIcon
-		if not slashSwitch then value = btnIcon:GetChecked() end
+		if not slashSwitch then value = XBT_DB.showIcon end
 
 		if value then
 			XBT_DB.showIcon = false
@@ -424,7 +424,7 @@ function configFrame:EnableConfig()
 	btnSpellName:SetScript("OnShow", function() btnSpellName:SetChecked(XBT_DB.showSpellName) end)
 	btnSpellName.func = function(slashSwitch)
 		local value = XBT_DB.showSpellName
-		if not slashSwitch then value = btnSpellName:GetChecked() end
+		if not slashSwitch then value = XBT_DB.showSpellName end
 
 		if value then
 			XBT_DB.showSpellName = false
@@ -446,7 +446,7 @@ function configFrame:EnableConfig()
 	btnHealers:SetScript("OnShow", function() btnHealers:SetChecked(XBT_DB.healersOnly) end)
 	btnHealers.func = function(slashSwitch)
 		local value = XBT_DB.healersOnly
-		if not slashSwitch then value = btnHealers:GetChecked() end
+		if not slashSwitch then value = XBT_DB.healersOnly end
 
 		if value then
 			XBT_DB.healersOnly = false

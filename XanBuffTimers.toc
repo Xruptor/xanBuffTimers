@@ -1,11 +1,11 @@
-## Interface: 90005
-## Interface-Retail: 90005
+## Interface: 90100
+## Interface-Retail: 90100
 ## Interface-Classic: 11307
-## Interface-BCC: 20501
+## Interface-BCC: 20502
 ## Title: xanBuffTimers
 ## Notes: A small text based progress bar system for target/focus/player buffs.
 ## Author: Xruptor
-## Version: 5.9
+## Version: 6.0
 ## X-Curse-Project-ID: 28655
 ## X-WoWI-ID: 19255
 ## OptionalDeps: tekDebug

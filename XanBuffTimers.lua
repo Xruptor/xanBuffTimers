@@ -518,7 +518,7 @@ function addon:CreateBuffTimers()
     Frm.spellText2:SetJustifyH("RIGHT")
     Frm.spellText2:SetPoint("RIGHT", Frm.icon, "LEFT" , 20, 0)
 	
-	Frm.Bar = Frm:CreateFontString(nil, "GameFontNormal")
+	Frm.Bar = Frm:CreateFontString(nil, "OVERLAY")
 	Frm.Bar:SetFont(STANDARD_TEXT_FONT, 14, "OUTLINE, MONOCHROME")
 	Frm.Bar:SetText(BAR_TEXT)
 	Frm.Bar:SetPoint("LEFT", Frm.icon, "RIGHT", 33, 0)

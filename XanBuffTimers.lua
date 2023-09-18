@@ -91,12 +91,12 @@ function addon:CheckSupportGUID()
 
 	--local _, _, subGroup = GetRaidRosterInfo(UnitInRaid("player"))
 	--GetNumSubgroupMembers
-	
+
 	local tankGUID
 	local unitID
 	local sTargetGUID
 	local sTargetUnitID
-	
+
 	--first check group
 	for i=1, GetNumSubgroupMembers() do
 		local unit = "party"..i
@@ -108,7 +108,7 @@ function addon:CheckSupportGUID()
 					unitID = unit
 				end
 			end
-			
+
 			local name = GetUnitName(unit, true)
 			if name and XBT_DB.supportTarget and XBT_DB.supportTarget == name then
 				sTargetGUID = UnitGUID(unit)
@@ -131,17 +131,17 @@ function addon:CheckSupportGUID()
 			end
 		end
 	end
-	
+
 	if sTargetGUID and sTargetUnitID then
 		tankGUID = sTargetGUID
 		unitID = sTargetUnitID
 	end
-	
+
 	--clear the buffs if we have nothing to work with
 	if not tankGUID or not unitID then
 		addon:ClearBuffs("support")
 	end
-	
+
 	return tankGUID, unitID
 end
 
@@ -154,21 +154,21 @@ function addon:SetSupportTarget()
 	end
 
 	local name = GetUnitName("target", true)
-	
+
 	--make sure it isn't the player
 	if name and name == GetUnitName("player", true) then
 		DEFAULT_CHAT_FRAME:AddMessage(L.SlashSupportTargetInvalid)
 		return
 	end
-	
+
 	XBT_DB.supportTarget = name
 	supportGUID, supportUnitID = addon:CheckSupportGUID()
-	
+
 	if not supportGUID then
 		DEFAULT_CHAT_FRAME:AddMessage(L.SlashSupportTargetInvalid)
 		return
 	end
-	
+
 	DEFAULT_CHAT_FRAME:AddMessage(string.format(L.SlashSupportTargetUnit, name))
 end
 
@@ -186,8 +186,8 @@ function addon:EnableAddon()
 	if XBT_DB.showIcon == nil then XBT_DB.showIcon = true end
 	if XBT_DB.showSpellName == nil then XBT_DB.showSpellName = false end
 	if XBT_DB.healersOnly == nil then XBT_DB.healersOnly = false end
-	
-	
+
+
 	--create our anchors
 	addon:CreateAnchor("XBT_TargetAnchor", UIParent, L.BarTargetAnchor)
 	if isRetail then
@@ -195,14 +195,14 @@ function addon:EnableAddon()
 	end
 	addon:CreateAnchor("XBT_PlayerAnchor", UIParent, L.BarPlayerAnchor)
 	addon:CreateAnchor("XBT_SupportAnchor", UIParent, L.BarSupportAnchor)
-	
+
 	--
 	playerGUID = UnitGUID("player")
 	supportGUID, supportUnitID = addon:CheckSupportGUID() --just in case they did a /reload
-	
+
 	--create our bars
 	addon:generateBars()
-	
+
 	addon:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 	addon:RegisterEvent("PLAYER_TARGET_CHANGED")
 	if isRetail then
@@ -212,9 +212,9 @@ function addon:EnableAddon()
 
 	SLASH_XANBUFFTIMERS1 = "/xbt"
 	SlashCmdList["XANBUFFTIMERS"] = function(cmd)
-	
+
 		local a,b,c=strfind(cmd, "(%S+)"); --contiguous string of non-space characters
-		
+
 		if a then
 			if c and c:lower() == L.SlashAnchor then
 				addon.aboutPanel.btnAnchor.func()
@@ -225,8 +225,8 @@ function addon:EnableAddon()
 			elseif c and c:lower() == L.SlashScale then
 				if b then
 					local scalenum = strsub(cmd, b+2)
-					if scalenum and scalenum ~= "" and tonumber(scalenum) and tonumber(scalenum) > 0 and tonumber(scalenum) <= 200 then
-						addon.aboutPanel.sliderScale.func(tonumber(scalenum))
+					if scalenum and scalenum ~= "" and tonumber(scalenum) and tonumber(scalenum) >= 0.5 and tonumber(scalenum) <= 5 then
+						addon:SetAddonScale(tonumber(scalenum))
 					else
 						DEFAULT_CHAT_FRAME:AddMessage(L.SlashScaleSetInvalid)
 					end
@@ -289,14 +289,14 @@ function addon:EnableAddon()
 		DEFAULT_CHAT_FRAME:AddMessage("/xbt "..L.SlashSpellName.." - "..L.SlashSpellNameInfo)
 		DEFAULT_CHAT_FRAME:AddMessage("/xbt "..L.SlashHealers.." - "..L.SlashHealersInfo)
 		DEFAULT_CHAT_FRAME:AddMessage("/xbt "..L.SlashReload .." - "..L.SlashReloadInfo)
-		
+
 	end
-	
+
 	if addon.configFrame then addon.configFrame:EnableConfig() end
-	
+
 	local ver = GetAddOnMetadata(ADDON_NAME,"Version") or '1.0'
 	DEFAULT_CHAT_FRAME:AddMessage(string.format("|cFF99CC33%s|r [v|cFF20ff20%s|r] loaded:   /xbt", ADDON_NAME, ver or "1.0"))
-	
+
 	--reload all our buffs on login
 	addon:ReloadBuffs()
 end
@@ -382,7 +382,7 @@ function addon:COMBAT_LOG_EVENT_UNFILTERED()
 				addon:ClearBuffs("support")
 			end
 		end
-		
+
 	elseif eventSwitch[eventType] and band(srcFlags, COMBATLOG_OBJECT_AFFILIATION_MINE) ~= 0 then
 		--process the spells based on GUID
 		if dstGUID == targetGUID and XBT_DB.showTarget then
@@ -410,7 +410,7 @@ function addon:CreateAnchor(name, parent, desc)
 
 	--create the anchor
 	local frameAnchor = CreateFrame("Frame", name, parent, BackdropTemplateMixin and "BackdropTemplate")
-	
+
 	frameAnchor:SetWidth(25)
 	frameAnchor:SetHeight(25)
 	frameAnchor:SetMovable(true)
@@ -420,7 +420,7 @@ function addon:CreateAnchor(name, parent, desc)
 	frameAnchor:ClearAllPoints()
 	frameAnchor:SetPoint("CENTER", parent, "CENTER", 0, 0)
 	frameAnchor:SetFrameStrata("DIALOG")
-	
+
 	frameAnchor:SetBackdrop({
 			bgFile = "Interface/Tooltips/UI-Tooltip-Background",
 			edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
@@ -437,11 +437,11 @@ function addon:CreateAnchor(name, parent, desc)
 	end)
 
 	frameAnchor:SetScript("OnEnter",function(self)
-	
+
 		GameTooltip:SetOwner(self, "ANCHOR_NONE")
 		GameTooltip:SetPoint(self:SetTip(self))
 		GameTooltip:ClearLines()
-		
+
 		GameTooltip:AddLine(name)
 		if desc then
 			GameTooltip:AddLine(desc)
@@ -456,14 +456,14 @@ function addon:CreateAnchor(name, parent, desc)
 		end
 	end)
 
-	frameAnchor:SetScript("OnMouseUp", function(frame, button) 
+	frameAnchor:SetScript("OnMouseUp", function(frame, button)
 		if( frame.isMoving ) then
 			frame.isMoving = nil
 			frame:StopMovingOrSizing()
 			addon:SaveLayout(frame:GetName())
 		end
 	end)
-	
+
 	function frameAnchor:SetTip(frame)
 		local x,y = frame:GetCenter()
 		if not x or not y then return "TOPLEFT", "BOTTOMLEFT" end
@@ -473,26 +473,27 @@ function addon:CreateAnchor(name, parent, desc)
 	end
 
 	frameAnchor:Hide() -- hide it by default
-	
+
 	addon:RestoreLayout(name)
 end
 
 function addon:CreateBuffTimers()
-	
+
     local Frm = CreateFrame("Frame", nil, UIParent, BackdropTemplateMixin and "BackdropTemplate")
 
     Frm:SetWidth(ICON_SIZE)
     Frm:SetHeight(ICON_SIZE)
 	Frm:SetFrameStrata("LOW")
-	Frm:SetScale(XBT_DB.scale)
-	
+
+	addon:SetAddonScale(XBT_DB.scale, true)
+
     Frm.icon = Frm:CreateTexture(nil, "BACKGROUND")
     Frm.icon:SetTexCoord(.07, .93, .07, .93)
     Frm.icon:SetWidth(ICON_SIZE)
     Frm.icon:SetHeight(ICON_SIZE)
 	Frm.icon:SetTexture("Interface\\Icons\\Spell_Shadow_Shadowbolt")
     Frm.icon:SetAllPoints(true)
-    
+
     Frm.stacktext = Frm:CreateFontString(nil, "OVERLAY");
     Frm.stacktext:SetFont(STANDARD_TEXT_FONT,10,"OUTLINE")
     Frm.stacktext:SetWidth(Frm.icon:GetWidth())
@@ -500,7 +501,7 @@ function addon:CreateBuffTimers()
     Frm.stacktext:SetJustifyH("RIGHT")
     Frm.stacktext:SetVertexColor(1,1,1)
     Frm.stacktext:SetPoint("RIGHT", Frm.icon, "RIGHT",1,-5)
-    
+
     Frm.timetext = Frm:CreateFontString(nil, "OVERLAY");
     Frm.timetext:SetFont(STANDARD_TEXT_FONT,10,"OUTLINE")
     Frm.timetext:SetJustifyH("RIGHT")
@@ -511,44 +512,72 @@ function addon:CreateBuffTimers()
 	Frm.spellText:SetTextColor(0,183/255,239/255)
     Frm.spellText:SetJustifyH("RIGHT")
     Frm.spellText:SetPoint("RIGHT", Frm.icon, "LEFT" , -5, 0)
-	
+
     Frm.spellText2 = Frm:CreateFontString(nil, "OVERLAY");
     Frm.spellText2:SetFont(STANDARD_TEXT_FONT,10,"OUTLINE")
 	Frm.spellText2:SetTextColor(0,183/255,239/255)
     Frm.spellText2:SetJustifyH("RIGHT")
     Frm.spellText2:SetPoint("RIGHT", Frm.icon, "LEFT" , 20, 0)
-	
+
 	Frm.Bar = Frm:CreateFontString(nil, "OVERLAY")
 	Frm.Bar:SetFont(STANDARD_TEXT_FONT, 14, "OUTLINE, MONOCHROME")
 	Frm.Bar:SetText(BAR_TEXT)
 	Frm.Bar:SetPoint("LEFT", Frm.icon, "RIGHT", 33, 0)
-	
+
 	Frm:Hide()
-    
+
 	return Frm
+
+end
+
+function addon:SetAddonScale(value, bypass)
+	--fix this in case it's ever smaller than   
+	if value < 0.5 then value = 0.5 end --anything smaller and it would vanish  
+	if value > 5 then value = 5 end --WAY too big  
+
+	XBT_DB.scale = value
+
+	if not bypass then
+		DEFAULT_CHAT_FRAME:AddMessage(string.format(L.SlashScaleSet, value))
+	end
+
+	for i=1, addon.MAX_TIMERS do
+		if addon.timersTarget[i] then
+			addon.timersTarget[i]:SetScale(XBT_DB.scale)
+		end
+		if isRetail and addon.timersFocus[i] then
+			addon.timersFocus[i]:SetScale(XBT_DB.scale)
+		end
+		if addon.timersPlayer[i] then
+			addon.timersPlayer[i]:SetScale(XBT_DB.scale)
+		end
+		if addon.timersSupport[i] then
+			addon.timersSupport[i]:SetScale(XBT_DB.scale)
+		end				
+	end
 
 end
 
 function addon:generateBars()
 	local adj = 0
-	
+
 	--lets create the max bars to use on screen for future sorting
 	for i=1, addon.MAX_TIMERS do
 		addon.timersTarget[i] = addon:CreateBuffTimers()
 		if not addon.timersTarget.buffs[i] then addon.timersTarget.buffs[i] = {} end
-		
+
 		if isRetail then
 			addon.timersFocus[i] = addon:CreateBuffTimers()
 			if not addon.timersFocus.buffs[i] then addon.timersFocus.buffs[i] = {} end
 		end
-		
+
 		addon.timersPlayer[i] = addon:CreateBuffTimers()
 		if not addon.timersPlayer.buffs[i] then addon.timersPlayer.buffs[i] = {} end
-		
+
 		addon.timersSupport[i] = addon:CreateBuffTimers()
 		if not addon.timersSupport.buffs[i] then addon.timersSupport.buffs[i] = {} end
 	end
-		
+
 	--rearrange order
 	for i=1, addon.MAX_TIMERS do
 		if XBT_DB.grow then
@@ -576,13 +605,13 @@ function addon:generateBars()
 		end
 		adj = adj - BAR_ADJUST
     end
-	
+
 	barsLoaded = true
 end
 
 function addon:adjustBars()
 	if not barsLoaded then return end
-	
+
 	local adj = 0
 	for i=1, addon.MAX_TIMERS do
 		if XBT_DB.grow then
@@ -595,7 +624,7 @@ function addon:adjustBars()
 			addon.timersPlayer[i]:ClearAllPoints()
 			addon.timersPlayer[i]:SetPoint("TOPLEFT", XBT_PlayerAnchor, "BOTTOMRIGHT", 0, adj)
 			addon.timersSupport[i]:ClearAllPoints()
-			addon.timersSupport[i]:SetPoint("TOPLEFT", XBT_SupportAnchor, "BOTTOMRIGHT", 0, adj)	
+			addon.timersSupport[i]:SetPoint("TOPLEFT", XBT_SupportAnchor, "BOTTOMRIGHT", 0, adj)
 		else
 			addon.timersTarget[i]:ClearAllPoints()
 			addon.timersTarget[i]:SetPoint("BOTTOMLEFT", XBT_TargetAnchor, "TOPRIGHT", 0, (adj * -1))
@@ -614,7 +643,7 @@ end
 
 function addon:ProcessBuffBar(data)
 	if data.isInfinite then return end --dont do any calculations on infinite
-	
+
 	local beforeEnd = data.endTime - GetTime()
 	-- local percentTotal = (beforeEnd / data.durationTime)
 	-- local percentFinal = ceil(percentTotal * 100)
@@ -625,21 +654,21 @@ function addon:ProcessBuffBar(data)
 	local totalBarSegment = (string.len(BAR_TEXT) / totalDuration) --lets get how much each segment of the bar string would value up to 100%
 	local totalBarLength = totalBarSegment * beforeEnd --now get the individual bar segment value and multiply it with current duration
 	local barPercent = (totalBarLength / string.len(BAR_TEXT)) * 100
-	
+
 	--100/40 means each segment is 2.5 for 100%
 	--example for 50%   50/100 = 0.5   0.5 / 2.5 = 0.2  (50% divided by segment count) 0.2 * 100 = 20 (which is half of the bar of 40)
 
 	if barPercent <= 0 or beforeEnd <= 0 or totalBarLength <= 0 then
 		data.active = false
-		return               
+		return
 	end
-	
+
 	data.percent = barPercent
 	data.totalBarLength = totalBarLength
 	data.beforeEnd = beforeEnd
-	
+
 end
-	
+
 ----------------------
 -- Buff Functions --
 ----------------------
@@ -654,9 +683,9 @@ addon:SetScript("OnUpdate", function(self, elapsed)
 	local fCount = 0
 	local pCount = 0
 	local sCount = 0
-	
+
 	if not barsLoaded then return end
-	
+
 	for i=1, addon.MAX_TIMERS do
 		if addon.timersTarget.buffs[i].active then
 			self:ProcessBuffBar(addon.timersTarget.buffs[i])
@@ -675,7 +704,7 @@ addon:SetScript("OnUpdate", function(self, elapsed)
 			sCount = sCount + 1
 		end
 	end
-	
+
 	--no need to arrange the bars if there is nothing to work with, uncessary if no target or focus
 	if tCount > 0 then
 		addon:ShowBuffs("target")
@@ -699,10 +728,10 @@ end)
 
 function addon:ProcessBuffs(id)
 	if not barsLoaded then return end
-	
+
 	local unitID = id
 	local class = select(2, UnitClass("player"))
-	
+
 	local healers = {
 		["DRUID"] = true,
 		["SHAMAN"] = true,
@@ -714,7 +743,7 @@ function addon:ProcessBuffs(id)
 	if XBT_DB.healersOnly and not healers[class] then
 		return
 	end
-	
+
 	local sdTimer = timerList[id] --makes things easier to read
 
 	if id == "support" then
@@ -727,10 +756,10 @@ function addon:ProcessBuffs(id)
 
 	for i=1, addon.MAX_TIMERS do
 		local name, icon, count, debuffType, duration, expTime, unitCaster, canStealOrPurge, nameplateShowPersonal, spellId = UnitAura(unitID, i, 'PLAYER|HELPFUL')
-		
+
 		local passChk = false
 		local isInfinite = false
-		
+
 		--only allow non-cancel auras if the user allowed it
 		if XBT_DB.showInfinite then
 			--auras are on so basically were allowing everything
@@ -739,11 +768,11 @@ function addon:ProcessBuffs(id)
 				isInfinite = true
 			end
 		end
-		if not XBT_DB.showInfinite and duration and duration > 0 then 
+		if not XBT_DB.showInfinite and duration and duration > 0 then
 			--auras are not on but the duration is greater then zero, so allow
 			passChk = true
 		end
-		
+
 		if name and passChk then
 			local beforeEnd = 0
 			local startTime = 0
@@ -751,7 +780,7 @@ function addon:ProcessBuffs(id)
 			local totalBarSegment = 0
 			local totalBarLength = 0
 			local barPercent = 0
-		
+
 			if isInfinite then
 				barPercent = 200 --anything higher than 100 will get pushed to top of list, so lets make it 200 -> addon:ShowBuffs(id)
 				duration = 0
@@ -765,7 +794,7 @@ function addon:ProcessBuffs(id)
 				totalBarLength = totalBarSegment * beforeEnd --now get the individual bar segment value and multiply it with current duration
 				barPercent = (totalBarLength / string.len(BAR_TEXT)) * 100
 			end
-		
+
 			if barPercent > 0 or beforeEnd > 0 or totalBarLength > 0 then
 				--buffs
 				sdTimer.buffs[i].unitID = unitID
@@ -792,7 +821,7 @@ end
 
 function addon:ClearBuffs(id)
 	if not barsLoaded then return end
-	
+
 	local sdTimer = timerList[id] --makes things easier to read
 	local adj = 0
 
@@ -800,7 +829,7 @@ function addon:ClearBuffs(id)
 		sdTimer.buffs[i].active = false
 		sdTimer[i]:Hide()
 	end
-	
+
 end
 
 function addon:ReloadBuffs()
@@ -812,7 +841,7 @@ function addon:ReloadBuffs()
 	end
 	addon:ClearBuffs("player")
 	addon:ClearBuffs("support")
-	
+
 	if XBT_DB.showTarget then
 		addon:ProcessBuffs("target")
 	end
@@ -830,10 +859,10 @@ end
 
 function addon:ShowBuffs(id)
 	if not barsLoaded then return end
-	
+
 	if locked then return end
 	locked = true
-	
+
 	local sdTimer
 	local tmpList = {}
 
@@ -849,42 +878,42 @@ function addon:ShowBuffs(id)
 		locked = false
 		return
 	end
-	
+
 	for i=1, addon.MAX_TIMERS do
 		if sdTimer.buffs[i].active then
 			table.insert(tmpList, sdTimer.buffs[i])
 		end
 	end
-	
+
 	if XBT_DB.grow then
 		--bars will grow down
 		if XBT_DB.sort then
 			--sort from shortest to longest
 			table.sort(tmpList, function(a,b) return (a.percent < b.percent) end)
-			
+
 		else
 			--sort from longest to shortest
 			table.sort(tmpList, function(a,b) return (a.percent > b.percent) end)
-			
+
 		end
 	else
 		--bars will grow up
 		if XBT_DB.sort then
 			--sort from shortest to longest
 			table.sort(tmpList, function(a,b) return (a.percent > b.percent) end)
-			
+
 		else
 			--sort from longest to shortest
 			table.sort(tmpList, function(a,b) return (a.percent < b.percent) end)
 		end
 	end
-	
+
 	for i=1, addon.MAX_TIMERS do
 		if tmpList[i] then
 			--display the information
 			---------------------------------------
 			sdTimer[i].Bar:SetText( string.sub(BAR_TEXT, 1, tmpList[i].totalBarLength) )
-			
+
 			if XBT_DB.showIcon then
 				sdTimer[i].icon:SetTexture(tmpList[i].iconTex)
 				sdTimer[i].spellText2:SetText("")
@@ -916,7 +945,7 @@ function addon:ShowBuffs(id)
 				sdTimer[i].Bar:SetTextColor(addon:getBarColor(tmpList[i].durationTime, tmpList[i].beforeEnd))
 			end
 			---------------------------------------
-			
+
 			sdTimer[i]:Show()
 		else
 			sdTimer[i]:Hide()
@@ -929,13 +958,13 @@ end
 ----------------------
 -- Local Functions  --
 ----------------------
-	
-	
+
+
 function addon:SaveLayout(frame)
 	if type(frame) ~= "string" then return end
 	if not _G[frame] then return end
 	if not XBT_DB then XBT_DB = {} end
-	
+
 	local opt = XBT_DB[frame] or nil
 
 	if not opt then

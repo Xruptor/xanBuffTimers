@@ -4,6 +4,7 @@
 ## Interface-Cata: 40400
 ## Title: xanBuffTimers
 ## Notes: A small text based progress bar system for target/focus/player buffs.
+## Notes-zhCN: 一个基于文本的小进度条系统，用于显示目标/焦点/玩家 BUFF。
 ## Author: Xruptor
 ## Version: 6.9
 ## IconTexture: 369214
@@ -19,6 +20,7 @@ libs\AceLocale-3.0\AceLocale-3.0.xml
 libs\LibClassicDurations\LibClassicDurations.xml
 
 locale\enUS.lua
+locale\zhCN.lua
 
 xanBuffTimers.lua
 config.lua

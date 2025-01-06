@@ -8,36 +8,36 @@ addon.configFrame = CreateFrame("frame", ADDON_NAME.."_config_eventFrame", UIPar
 local configFrame = addon.configFrame
 
 local L = LibStub("AceLocale-3.0"):GetLocale(ADDON_NAME)
-local isRetail = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
+local canFocusT = (FocusUnit and FocusFrame) or false
 
 local lastObject
 local function addConfigEntry(objEntry, adjustX, adjustY)
-	
+
 	objEntry:ClearAllPoints()
-	
+
 	if not lastObject then
-		objEntry:SetPoint("TOPLEFT", 20, -150)
+		objEntry:SetPoint("TOPLEFT", 20, -120)
 	else
 		objEntry:SetPoint("LEFT", lastObject, "BOTTOMLEFT", adjustX or 0, adjustY or -30)
 	end
-	
+
 	lastObject = objEntry
 end
 
 local chkBoxIndex = 0
 local function createCheckbutton(parentFrame, displayText)
 	chkBoxIndex = chkBoxIndex + 1
-	
+
 	local checkbutton = CreateFrame("CheckButton", ADDON_NAME.."_config_chkbtn_" .. chkBoxIndex, parentFrame, "ChatConfigCheckButtonTemplate")
 	getglobal(checkbutton:GetName() .. 'Text'):SetText(" "..displayText)
-	
+
 	return checkbutton
 end
 
 local buttonIndex = 0
 local function createButton(parentFrame, displayText)
 	buttonIndex = buttonIndex + 1
-	
+
 	local button = CreateFrame("Button", ADDON_NAME.."_config_button_" .. buttonIndex, parentFrame, "UIPanelButtonTemplate")
 	button:SetText(displayText)
 	button:SetHeight(30)
@@ -96,7 +96,7 @@ local function LoadAboutFrame()
 	local about = CreateFrame("Frame", ADDON_NAME.."AboutPanel", InterfaceOptionsFramePanelContainer, BackdropTemplateMixin and "BackdropTemplate")
 	about.name = ADDON_NAME
 	about:Hide()
-	
+
     local fields = {"Version", "Author"}
 	local notes = C_AddOns.GetAddOnMetadata(ADDON_NAME, "Notes")
 
@@ -134,7 +134,7 @@ local function LoadAboutFrame()
 			anchor = title
 		end
 	end
-	
+
 	if InterfaceOptions_AddCategory then
 		InterfaceOptions_AddCategory(about)
 	else
@@ -147,15 +147,15 @@ local function LoadAboutFrame()
 end
 
 function configFrame:EnableConfig()
-	
+
 	addon.aboutPanel = LoadAboutFrame()
-	
+
 	--anchor
 	local btnAnchor = createButton(addon.aboutPanel, L.SlashAnchorText)
 	btnAnchor.func = function()
 		if XBT_TargetAnchor:IsVisible() then
 			XBT_TargetAnchor:Hide()
-			if isRetail then
+			if canFocusT then
 				XBT_FocusAnchor:Hide()
 			end
 			XBT_PlayerAnchor:Hide()
@@ -163,7 +163,7 @@ function configFrame:EnableConfig()
 			DEFAULT_CHAT_FRAME:AddMessage(L.SlashAnchorOff)
 		else
 			XBT_TargetAnchor:Show()
-			if isRetail then
+			if canFocusT then
 				XBT_FocusAnchor:Show()
 			end
 			XBT_PlayerAnchor:Show()
@@ -172,17 +172,17 @@ function configFrame:EnableConfig()
 		end
 	end
 	btnAnchor:SetScript("OnClick", btnAnchor.func)
-	
+
 	addConfigEntry(btnAnchor, 0, -30)
 	addon.aboutPanel.btnAnchor = btnAnchor
-	
+
 	--reset
 	local btnReset = createButton(addon.aboutPanel, L.SlashResetText)
 	btnReset.func = function()
 		DEFAULT_CHAT_FRAME:AddMessage(L.SlashResetAlert)
 		XBT_TargetAnchor:ClearAllPoints()
 		XBT_TargetAnchor:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
-		if isRetail then
+		if canFocusT then
 			XBT_FocusAnchor:ClearAllPoints()
 			XBT_FocusAnchor:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 		end
@@ -192,10 +192,10 @@ function configFrame:EnableConfig()
 		XBT_SupportAnchor:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 	end
 	btnReset:SetScript("OnClick", btnReset.func)
-	
+
 	addConfigEntry(btnReset, 0, -25)
 	addon.aboutPanel.btnReset = btnReset
-	
+
 	--scale
 	local sliderScale = createSlider(addon.aboutPanel, L.SlashScaleText, 0.5, 5, 0.1)
 	sliderScale:SetScript("OnShow", function()
@@ -233,14 +233,14 @@ function configFrame:EnableConfig()
 			XBT_DB.grow = true
 			DEFAULT_CHAT_FRAME:AddMessage(L.SlashGrowDown)
 		end
-		
+
 		addon:adjustBars()
 	end
 	btnGrow:SetScript("OnClick", btnGrow.func)
-	
+
 	addConfigEntry(btnGrow, 0, -30)
 	addon.aboutPanel.btnGrow = btnGrow
-	
+
 	--sort
 	local btnSort = createCheckbutton(addon.aboutPanel, L.SlashSortChkBtn)
 	btnSort:SetScript("OnShow", function() btnSort:SetChecked(XBT_DB.sort) end)
@@ -255,14 +255,14 @@ function configFrame:EnableConfig()
 			XBT_DB.sort = true
 			DEFAULT_CHAT_FRAME:AddMessage(L.SlashSortAscending)
 		end
-		
+
 		addon:adjustBars()
 	end
 	btnSort:SetScript("OnClick", btnSort.func)
-	
+
 	addConfigEntry(btnSort, 0, -13)
 	addon.aboutPanel.btnSort = btnSort
-	
+
 	--target
 	local btnTarget = createCheckbutton(addon.aboutPanel, L.SlashTargetChkBtn)
 	btnTarget:SetScript("OnShow", function() btnTarget:SetChecked(XBT_DB.showTarget) end)
@@ -277,15 +277,15 @@ function configFrame:EnableConfig()
 			XBT_DB.showTarget = true
 			DEFAULT_CHAT_FRAME:AddMessage(L.SlashTargetOn)
 		end
-		
+
 		addon:ReloadBuffs()
 	end
 	btnTarget:SetScript("OnClick", btnTarget.func)
-	
+
 	addConfigEntry(btnTarget, 0, -13)
 	addon.aboutPanel.btnTarget = btnTarget
-	
-	if isRetail then
+
+	if canFocusT then
 		--focus
 		local btnFocus = createCheckbutton(addon.aboutPanel, L.SlashFocusChkBtn)
 		btnFocus:SetScript("OnShow", function() btnFocus:SetChecked(XBT_DB.showFocus) end)
@@ -300,15 +300,15 @@ function configFrame:EnableConfig()
 				XBT_DB.showFocus = true
 				DEFAULT_CHAT_FRAME:AddMessage(L.SlashFocusOn)
 			end
-			
+
 			addon:ReloadBuffs()
 		end
 		btnFocus:SetScript("OnClick", btnFocus.func)
-		
+
 		addConfigEntry(btnFocus, 0, -13)
 		addon.aboutPanel.btnFocus = btnFocus
 	end
-	
+
 	--player
 	local btnPlayer = createCheckbutton(addon.aboutPanel, L.SlashPlayerChkBtn)
 	btnPlayer:SetScript("OnShow", function() btnPlayer:SetChecked(XBT_DB.showPlayer) end)
@@ -323,14 +323,14 @@ function configFrame:EnableConfig()
 			XBT_DB.showPlayer = true
 			DEFAULT_CHAT_FRAME:AddMessage(L.SlashPlayerOn)
 		end
-		
+
 		addon:ReloadBuffs()
 	end
 	btnPlayer:SetScript("OnClick", btnPlayer.func)
-	
+
 	addConfigEntry(btnPlayer, 0, -13)
 	addon.aboutPanel.btnPlayer = btnPlayer
-	
+
 	--support
 	local btnSupport = createCheckbutton(addon.aboutPanel, L.SlashSupportChkBtn)
 	btnSupport:SetScript("OnShow", function() btnSupport:SetChecked(XBT_DB.showSupport) end)
@@ -345,14 +345,14 @@ function configFrame:EnableConfig()
 			XBT_DB.showSupport = true
 			DEFAULT_CHAT_FRAME:AddMessage(L.SlashPlayerOn)
 		end
-		
+
 		addon:ReloadBuffs()
 	end
 	btnSupport:SetScript("OnClick", btnSupport.func)
-	
+
 	addConfigEntry(btnSupport, 0, -13)
 	addon.aboutPanel.btnSupport = btnSupport
-	
+
 	--infinite
 	local btnInfinite = createCheckbutton(addon.aboutPanel, L.SlashInfiniteChkBtn)
 	btnInfinite:SetScript("OnShow", function() btnInfinite:SetChecked(XBT_DB.showInfinite) end)
@@ -367,14 +367,14 @@ function configFrame:EnableConfig()
 			XBT_DB.showInfinite = true
 			DEFAULT_CHAT_FRAME:AddMessage(L.SlashInfiniteOn)
 		end
-		
+
 		addon:ReloadBuffs()
 	end
 	btnInfinite:SetScript("OnClick", btnInfinite.func)
-	
+
 	addConfigEntry(btnInfinite, 0, -13)
 	addon.aboutPanel.btnInfinite = btnInfinite
-	
+
 	--icon
 	local btnIcon = createCheckbutton(addon.aboutPanel, L.SlashIconChkBtn)
 	btnIcon:SetScript("OnShow", function() btnIcon:SetChecked(XBT_DB.showIcon) end)
@@ -389,14 +389,15 @@ function configFrame:EnableConfig()
 			XBT_DB.showIcon = true
 			DEFAULT_CHAT_FRAME:AddMessage(L.SlashIconOn)
 		end
-		
+
+		addon:adjustBars()
 		addon:ReloadBuffs()
 	end
 	btnIcon:SetScript("OnClick", btnIcon.func)
-	
+
 	addConfigEntry(btnIcon, 0, -13)
 	addon.aboutPanel.btnIcon = btnIcon
-	
+
 	--spellname
 	local btnSpellName = createCheckbutton(addon.aboutPanel, L.SlashSpellNameChkBtn)
 	btnSpellName:SetScript("OnShow", function() btnSpellName:SetChecked(XBT_DB.showSpellName) end)
@@ -411,14 +412,36 @@ function configFrame:EnableConfig()
 			XBT_DB.showSpellName = true
 			DEFAULT_CHAT_FRAME:AddMessage(L.SlashSpellNameOn)
 		end
-		
+
+		addon:adjustBars()
 		addon:ReloadBuffs()
 	end
 	btnSpellName:SetScript("OnClick", btnSpellName.func)
-	
+
 	addConfigEntry(btnSpellName, 0, -13)
 	addon.aboutPanel.btnSpellName = btnSpellName
-	
+
+	--show on right
+	local btnShowOnRight = createCheckbutton(addon.aboutPanel, L.ShowTimerOnRight)
+	btnShowOnRight:SetScript("OnShow", function() btnShowOnRight:SetChecked(XBT_DB.showTimerOnRight) end)
+	btnShowOnRight.func = function(slashSwitch)
+		local value = XBT_DB.showTimerOnRight
+		if not slashSwitch then value = XBT_DB.showTimerOnRight end
+
+		if value then
+			XBT_DB.showTimerOnRight = false
+		else
+			XBT_DB.showTimerOnRight = true
+		end
+
+		addon:adjustBars()
+		addon:ReloadBuffs()
+	end
+	btnShowOnRight:SetScript("OnClick", btnShowOnRight.func)
+
+	addConfigEntry(btnShowOnRight, 0, -13)
+	addon.aboutPanel.btnShowOnRight = btnShowOnRight
+
 	--healers
 	local btnHealers = createCheckbutton(addon.aboutPanel, L.SlashHealersChkBtn)
 	btnHealers:SetScript("OnShow", function() btnHealers:SetChecked(XBT_DB.healersOnly) end)
@@ -433,14 +456,34 @@ function configFrame:EnableConfig()
 			XBT_DB.healersOnly = true
 			DEFAULT_CHAT_FRAME:AddMessage(L.SlashHealersOn)
 		end
-		
+
 		addon:ReloadBuffs()
 	end
 	btnHealers:SetScript("OnClick", btnHealers.func)
-	
+
 	addConfigEntry(btnHealers, 0, -13)
 	addon.aboutPanel.btnHealers = btnHealers
-	
+
+	--hide in rested
+	local btnHideInRested = createCheckbutton(addon.aboutPanel, L.HideInRested)
+	btnHideInRested:SetScript("OnShow", function() btnHideInRested:SetChecked(XBT_DB.hideInRestedAreas) end)
+	btnHideInRested.func = function(slashSwitch)
+		local value = XBT_DB.hideInRestedAreas
+		if not slashSwitch then value = XBT_DB.hideInRestedAreas end
+
+		if value then
+			XBT_DB.hideInRestedAreas = false
+		else
+			XBT_DB.hideInRestedAreas = true
+		end
+
+		addon:ReloadBuffs()
+	end
+	btnHideInRested:SetScript("OnClick", btnHideInRested.func)
+
+	addConfigEntry(btnHideInRested, 0, -13)
+	addon.aboutPanel.btnHideInRested = btnHideInRested
+
 	--reload buffs
 	local btnReloadBuffs = createButton(addon.aboutPanel, L.SlashReloadText)
 	btnReloadBuffs.func = function()
@@ -448,7 +491,7 @@ function configFrame:EnableConfig()
 		DEFAULT_CHAT_FRAME:AddMessage(L.SlashReloadAlert)
 	end
 	btnReloadBuffs:SetScript("OnClick", btnReloadBuffs.func)
-	
+
 	addConfigEntry(btnReloadBuffs, 0, -15)
 	addon.aboutPanel.btnReloadBuffs = btnReloadBuffs
 end

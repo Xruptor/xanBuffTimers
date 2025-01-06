@@ -33,7 +33,7 @@ addon:SetScript("OnEvent", function(self, event, ...)
 end)
 
 local L = LibStub("AceLocale-3.0"):GetLocale(ADDON_NAME)
-local isRetail = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
+local canFocusT = (FocusUnit and FocusFrame) or false
 
 addon.timersTarget = {}
 addon.timersFocus = {}
@@ -51,18 +51,12 @@ addon.MAX_TIMERS = 15
 local ICON_SIZE = 20
 local BAR_ADJUST = 25
 local BAR_TEXT = "llllllllllllllllllllllllllllllllllllllll"
-local band = bit.band
 local locked = false
 
-local targetGUID = 0
-local focusGUID = 0
-local playerGUID = 0
 local supportGUID
 local supportUnitID
 local UnitAura = C_UnitAuras.GetAuraDataByIndex
-local UnitIsUnit = UnitIsUnit
 local UnitGUID = UnitGUID
-local UnitName = UnitName
 
 local timerList = {
 	["target"] = addon.timersTarget,
@@ -76,63 +70,64 @@ local barsLoaded = false
 ----------------------
 --      Enable      --
 ----------------------
-function addon:CheckSupportGUID()
-	if not XBT_DB.showSupport then return nil end
 
-	--local _, _, subGroup = GetRaidRosterInfo(UnitInRaid("player"))
-	--GetNumSubgroupMembers
+function addon:CheckSupportGUID()
+	supportGUID = nil --reset
+	supportUnitID = nil --reset
+
+	if not XBT_DB.showSupport then return end
 
 	local tankGUID
-	local unitID
-	local sTargetGUID
-	local sTargetUnitID
+	local tankUnitID
+	local chkSupportGUID
+	local chkSupportUnitID
 
 	--first check group
 	for i=1, GetNumSubgroupMembers() do
 		local unit = "party"..i
 		if ( UnitExists(unit) ) then
-			if isRetail then
+			if UnitGroupRolesAssigned then
 				local role = UnitGroupRolesAssigned(unit)
 				if role and role == "TANK" then
 					tankGUID = UnitGUID(unit)
-					unitID = unit
+					tankUnitID = unit
 				end
 			end
 
 			local name = GetUnitName(unit, true)
 			if name and XBT_DB.supportTarget and XBT_DB.supportTarget == name then
-				sTargetGUID = UnitGUID(unit)
-				sTargetUnitID = unit
+				chkSupportGUID = UnitGUID(unit)
+				chkSupportUnitID = unit
 			end
 		end
 	end
 
 	--check raid only if we have a support target
-	if IsInRaid() and XBT_DB.supportTarget and not sTargetGUID then
+	if IsInRaid() and XBT_DB.supportTarget and not chkSupportGUID then
 		for i=1, MAX_RAID_MEMBERS do
 			local unit = "raid"..i
 			if ( UnitExists(unit) ) then
 
 				local name = GetUnitName(unit, true)
 				if name and XBT_DB.supportTarget and XBT_DB.supportTarget == name then
-					sTargetGUID = UnitGUID(unit)
-					sTargetUnitID = unit
+					chkSupportGUID = UnitGUID(unit)
+					chkSupportUnitID = unit
 				end
 			end
 		end
 	end
 
-	if sTargetGUID and sTargetUnitID then
-		tankGUID = sTargetGUID
-		unitID = sTargetUnitID
+	if chkSupportGUID and chkSupportUnitID then
+		tankGUID = chkSupportGUID
+		tankUnitID = chkSupportUnitID
 	end
 
 	--clear the buffs if we have nothing to work with
-	if not tankGUID or not unitID then
+	if not tankGUID or not tankUnitID then
 		addon:ClearBuffs("support")
 	end
 
-	return tankGUID, unitID
+	return tankGUID, tankUnitID
 end
 
 function addon:SetSupportTarget()
@@ -176,26 +171,29 @@ function addon:EnableAddon()
 	if XBT_DB.showIcon == nil then XBT_DB.showIcon = true end
 	if XBT_DB.showSpellName == nil then XBT_DB.showSpellName = false end
 	if XBT_DB.healersOnly == nil then XBT_DB.healersOnly = false end
-
+	if XBT_DB.hideInRestedAreas == nil then XBT_DB.hideInRestedAreas = false end
+	if XBT_DB.showTimerOnRight == nil then XBT_DB.showTimerOnRight = true end
 
 	--create our anchors
 	addon:CreateAnchor("XBT_TargetAnchor", UIParent, L.BarTargetAnchor)
-	if isRetail then
+	if canFocusT then
 		addon:CreateAnchor("XBT_FocusAnchor", UIParent, L.BarFocusAnchor)
 	end
 	addon:CreateAnchor("XBT_PlayerAnchor", UIParent, L.BarPlayerAnchor)
 	addon:CreateAnchor("XBT_SupportAnchor", UIParent, L.BarSupportAnchor)
 
 	--
-	playerGUID = UnitGUID("player")
 	supportGUID, supportUnitID = addon:CheckSupportGUID() --just in case they did a /reload
 
 	--create our bars
 	addon:generateBars()
 
-	addon:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+	addon:RegisterEvent("PLAYER_UPDATE_RESTING")
+	addon:RegisterEvent("PLAYER_ENTERING_WORLD")
+	addon:RegisterEvent("UNIT_AURA")
 	addon:RegisterEvent("PLAYER_TARGET_CHANGED")
-	if isRetail then
+
+	if canFocusT then
 		addon:RegisterEvent("PLAYER_FOCUS_CHANGED")
 	end
 	addon:RegisterEvent("GROUP_ROSTER_UPDATE")
@@ -231,7 +229,7 @@ function addon:EnableAddon()
 			elseif c and c:lower() == L.SlashTarget then
 				addon.aboutPanel.btnTarget.func(true)
 				return true
-			elseif c and c:lower() == L.SlashFocus and isRetail then
+			elseif c and c:lower() == L.SlashFocus and canFocusT then
 				addon.aboutPanel.btnFocus.func(true)
 				return true
 			elseif c and c:lower() == L.SlashPlayer then
@@ -256,7 +254,7 @@ function addon:EnableAddon()
 				addon.aboutPanel.btnHealers.func(true)
 				return true
 			elseif c and c:lower() == L.SlashReload then
-				 addon.aboutPanel.btnReloadDebuffs.func()
+				 addon.aboutPanel.btnReloadBuffs.func()
 				return true
 			end
 		end
@@ -268,7 +266,7 @@ function addon:EnableAddon()
 		DEFAULT_CHAT_FRAME:AddMessage("/xbt "..L.SlashGrow.." - "..L.SlashGrowInfo)
 		DEFAULT_CHAT_FRAME:AddMessage("/xbt "..L.SlashSort.." - "..L.SlashSortInfo)
 		DEFAULT_CHAT_FRAME:AddMessage("/xbt "..L.SlashTarget.." - "..L.SlashTargetInfo)
-		if isRetail then
+		if canFocusT then
 			DEFAULT_CHAT_FRAME:AddMessage("/xbt "..L.SlashFocus.." - "..L.SlashFocusInfo)
 		end
 		DEFAULT_CHAT_FRAME:AddMessage("/xbt "..L.SlashPlayer.." - "..L.SlashPlayerInfo)
@@ -291,14 +289,14 @@ function addon:EnableAddon()
 	addon:ReloadBuffs()
 end
 
-function addon:PLAYER_TARGET_CHANGED()
-	if not XBT_DB.showTarget then return end
-	if UnitName("target") and UnitGUID("target") then
-		targetGUID = UnitGUID("target")
-		addon:ProcessBuffs("target")
-	else
-		addon:ClearBuffs("target")
-		targetGUID = 0
+function addon:PLAYER_UPDATE_RESTING()
+	if XBT_DB.hideInRestedAreas and IsResting() then
+		addon:ReloadBuffs()
+	end
+end
+function addon:PLAYER_ENTERING_WORLD()
+	if XBT_DB.hideInRestedAreas and IsResting() then
+		addon:ReloadBuffs()
 	end
 end
 
@@ -306,90 +304,27 @@ function addon:GROUP_ROSTER_UPDATE()
 	supportGUID, supportUnitID = addon:CheckSupportGUID()
 end
 
-function addon:PLAYER_FOCUS_CHANGED()
-	if not isRetail then return end
-	if not XBT_DB.showFocus then return end
-	if UnitName("focus") and UnitGUID("focus") then
-		focusGUID = UnitGUID("focus")
-		addon:ProcessBuffs("focus")
-	else
-		addon:ClearBuffs("focus")
-		focusGUID = 0
-	end
+function addon:PLAYER_TARGET_CHANGED()
+	if not XBT_DB.showTarget then return end
+	addon:ProcessBuffs("target")
 end
 
-local eventSwitch = {
-	["SPELL_AURA_APPLIED"] = true,
-	["SPELL_AURA_REMOVED"] = true,
-	["SPELL_AURA_REFRESH"] = true,
-	["SPELL_AURA_APPLIED_DOSE"] = true,
-	["SPELL_AURA_APPLIED_REMOVED_DOSE"] = true,
-	["SPELL_AURA_REMOVED_DOSE"] = true,
-	["SPELL_AURA_BROKEN"] = true,
-	["SPELL_AURA_BROKEN_SPELL"] = true,
-	["ENCHANT_REMOVED"] = true,
-	["ENCHANT_APPLIED"] = true,
-	["SPELL_CAST_SUCCESS"] = true,
-	["SPELL_PERIODIC_ENERGIZE"] = true,
-	["SPELL_ENERGIZE"] = true,
-	["SPELL_PERIODIC_HEAL"] = true,
-	["SPELL_HEAL"] = true,
-	["SPELL_DAMAGE"] = true,
-	["SPELL_PERIODIC_DAMAGE"] = true,
-	--added new
-	["SPELL_DRAIN"] = true,
-	["SPELL_LEECH"] = true,
-	["SPELL_PERIODIC_DRAIN"] = true,
-	["SPELL_PERIODIC_LEECH"] = true,
-	["DAMAGE_SHIELD"] = true,
-	["DAMAGE_SPLIT"] = true,
-}
+function addon:PLAYER_FOCUS_CHANGED()
+	if not canFocusT then return end
+	if not XBT_DB.showFocus then return end
+	addon:ProcessBuffs("focus")
+end
 
-local CombatLogGetCurrentEventInfo = CombatLogGetCurrentEventInfo
-
-function addon:COMBAT_LOG_EVENT_UNFILTERED()
-
-	--local timestamp, eventType, hideCaster, sourceGUID, sourceName, srcFlags, sourceRaidFlags, dstGUID, destName, destFlags, destRaidFlags, spellID, spellName, spellSchool, auraType, amount
-	local timestamp, eventType, _, sourceGUID, _, srcFlags, _, dstGUID = CombatLogGetCurrentEventInfo()
-
-    if eventType == "UNIT_DIED" or eventType == "UNIT_DESTROYED" then
-		--clear the buffs if the unit died
-		--NOTE the reason an elseif isn't used is because some dorks may have
-		--their current target as their focus as well
-		if dstGUID == targetGUID and XBT_DB.showTarget then
-			addon:ClearBuffs("target")
-			targetGUID = 0
-		end
-		if isRetail and dstGUID == focusGUID and XBT_DB.showFocus then
-			addon:ClearBuffs("focus")
-			focusGUID = 0
-		end
-		if dstGUID == playerGUID and XBT_DB.showPlayer then
-			addon:ClearBuffs("player")
-		end
-		if XBT_DB.showSupport then
-			if supportGUID and dstGUID == supportGUID then
-				addon:ClearBuffs("support")
-			end
-		end
-
-	elseif eventSwitch[eventType] and band(srcFlags, COMBATLOG_OBJECT_AFFILIATION_MINE) ~= 0 then
-		--process the spells based on GUID
-		if dstGUID == targetGUID and XBT_DB.showTarget then
-			addon:ProcessBuffs("target")
-		end
-		if isRetail and dstGUID == focusGUID and XBT_DB.showFocus then
-			addon:ProcessBuffs("focus")
-		end
-		if dstGUID == playerGUID and XBT_DB.showPlayer then
-			addon:ProcessBuffs("player")
-		end
-		if XBT_DB.showSupport then
-			if supportGUID and dstGUID == supportGUID  then
-				addon:ProcessBuffs("support")
-			end
-		end
-    end
+function addon:UNIT_AURA(event, unit, info)
+	if XBT_DB.showFocus and canFocusT and unit == "focus" then
+		addon:ProcessBuffs("focus")
+	elseif XBT_DB.showTarget and unit == "target" then
+		addon:ProcessBuffs("target")
+	elseif XBT_DB.showPlayer and (unit == "player" or unit == "vehicle") then
+		addon:ProcessBuffs("player")
+	elseif XBT_DB.showSupport and supportUnitID and unit == supportUnitID then
+		addon:ProcessBuffs("support")
+	end
 end
 
 ----------------------
@@ -469,7 +404,7 @@ end
 
 function addon:CreateBuffTimers()
 
-    local Frm = CreateFrame("Frame", nil, UIParent, BackdropTemplateMixin and "BackdropTemplate")
+	local Frm = CreateFrame("Frame", nil, UIParent, BackdropTemplateMixin and "BackdropTemplate")
 
     Frm:SetWidth(ICON_SIZE)
     Frm:SetHeight(ICON_SIZE)
@@ -497,17 +432,11 @@ function addon:CreateBuffTimers()
     Frm.timetext:SetJustifyH("RIGHT")
     Frm.timetext:SetPoint("LEFT", Frm.icon, "RIGHT", 5, 0)
 
-    Frm.spellText = Frm:CreateFontString(nil, "OVERLAY");
-    Frm.spellText:SetFont(STANDARD_TEXT_FONT,10,"OUTLINE")
-	Frm.spellText:SetTextColor(0,183/255,239/255)
-    Frm.spellText:SetJustifyH("RIGHT")
-    Frm.spellText:SetPoint("RIGHT", Frm.icon, "LEFT" , -5, 0)
-
-    Frm.spellText2 = Frm:CreateFontString(nil, "OVERLAY");
-    Frm.spellText2:SetFont(STANDARD_TEXT_FONT,10,"OUTLINE")
-	Frm.spellText2:SetTextColor(0,183/255,239/255)
-    Frm.spellText2:SetJustifyH("RIGHT")
-    Frm.spellText2:SetPoint("RIGHT", Frm.icon, "LEFT" , 20, 0)
+    Frm.spellNameText = Frm:CreateFontString(nil, "OVERLAY");
+    Frm.spellNameText:SetFont(STANDARD_TEXT_FONT,10,"OUTLINE")
+	Frm.spellNameText:SetTextColor(0,183/255,239/255)
+    Frm.spellNameText:SetJustifyH("RIGHT")
+    Frm.spellNameText:SetPoint("RIGHT", Frm.icon, "LEFT" , -5, 0)
 
 	Frm.Bar = Frm:CreateFontString(nil, "OVERLAY")
 	Frm.Bar:SetFont(STANDARD_TEXT_FONT, 14, "OUTLINE, MONOCHROME")
@@ -535,7 +464,7 @@ function addon:SetAddonScale(value, bypass)
 		if addon.timersTarget[i] then
 			addon.timersTarget[i]:SetScale(XBT_DB.scale)
 		end
-		if isRetail and addon.timersFocus[i] then
+		if canFocusT and addon.timersFocus[i] then
 			addon.timersFocus[i]:SetScale(XBT_DB.scale)
 		end
 		if addon.timersPlayer[i] then
@@ -543,9 +472,34 @@ function addon:SetAddonScale(value, bypass)
 		end
 		if addon.timersSupport[i] then
 			addon.timersSupport[i]:SetScale(XBT_DB.scale)
-		end				
+		end
 	end
 
+end
+
+function addon:adjustTextAlignment(sdTimer)
+	if not sdTimer then return end
+
+	--if we have the icon visible, we need to determine if we show the timer text on the left or right
+	sdTimer.timetext:ClearAllPoints()
+	sdTimer.Bar:ClearAllPoints()
+	sdTimer.spellNameText:ClearAllPoints()
+
+	if XBT_DB.showIcon then
+		if XBT_DB.showTimerOnRight then
+			sdTimer.timetext:SetPoint("LEFT", sdTimer.icon, "RIGHT", 5, 0)
+			sdTimer.Bar:SetPoint("LEFT", sdTimer.icon, "RIGHT", 33, 0)
+			sdTimer.spellNameText:SetPoint("RIGHT", sdTimer.icon, "LEFT" , -5, 0)
+		else
+			sdTimer.timetext:SetPoint("RIGHT", sdTimer.icon, "LEFT" , -5, 0)
+			sdTimer.Bar:SetPoint("LEFT", sdTimer.icon, "RIGHT", 5, 0)
+			sdTimer.spellNameText:SetPoint("RIGHT", sdTimer.timetext, "LEFT" , -5, 0)
+		end
+	else
+		sdTimer.timetext:SetPoint("LEFT", sdTimer.icon, "RIGHT", 5, 0)
+		sdTimer.Bar:SetPoint("LEFT", sdTimer.icon, "RIGHT", 33, 0)
+		sdTimer.spellNameText:SetPoint("RIGHT", sdTimer.timetext, "LEFT" , -5, 0)
+	end
 end
 
 function addon:generateBars()
@@ -556,7 +510,7 @@ function addon:generateBars()
 		addon.timersTarget[i] = addon:CreateBuffTimers()
 		if not addon.timersTarget.buffs[i] then addon.timersTarget.buffs[i] = {} end
 
-		if isRetail then
+		if canFocusT then
 			addon.timersFocus[i] = addon:CreateBuffTimers()
 			if not addon.timersFocus.buffs[i] then addon.timersFocus.buffs[i] = {} end
 		end
@@ -567,36 +521,9 @@ function addon:generateBars()
 		addon.timersSupport[i] = addon:CreateBuffTimers()
 		if not addon.timersSupport.buffs[i] then addon.timersSupport.buffs[i] = {} end
 	end
-
-	--rearrange order
-	for i=1, addon.MAX_TIMERS do
-		if XBT_DB.grow then
-			addon.timersTarget[i]:ClearAllPoints()
-			addon.timersTarget[i]:SetPoint("TOPLEFT", XBT_TargetAnchor, "BOTTOMRIGHT", 0, adj)
-			if isRetail then
-				addon.timersFocus[i]:ClearAllPoints()
-				addon.timersFocus[i]:SetPoint("TOPLEFT", XBT_FocusAnchor, "BOTTOMRIGHT", 0, adj)
-			end
-			addon.timersPlayer[i]:ClearAllPoints()
-			addon.timersPlayer[i]:SetPoint("TOPLEFT", XBT_PlayerAnchor, "BOTTOMRIGHT", 0, adj)
-			addon.timersSupport[i]:ClearAllPoints()
-			addon.timersSupport[i]:SetPoint("TOPLEFT", XBT_SupportAnchor, "BOTTOMRIGHT", 0, adj)
-		else
-			addon.timersTarget[i]:ClearAllPoints()
-			addon.timersTarget[i]:SetPoint("BOTTOMLEFT", XBT_TargetAnchor, "TOPRIGHT", 0, (adj * -1))
-			if isRetail then
-				addon.timersFocus[i]:ClearAllPoints()
-				addon.timersFocus[i]:SetPoint("BOTTOMLEFT", XBT_FocusAnchor, "TOPRIGHT", 0, (adj * -1))
-			end
-			addon.timersPlayer[i]:ClearAllPoints()
-			addon.timersPlayer[i]:SetPoint("BOTTOMLEFT", XBT_PlayerAnchor, "TOPRIGHT", 0, (adj * -1))
-			addon.timersSupport[i]:ClearAllPoints()
-			addon.timersSupport[i]:SetPoint("BOTTOMLEFT", XBT_SupportAnchor, "TOPRIGHT", 0, (adj * -1))
-		end
-		adj = adj - BAR_ADJUST
-    end
-
 	barsLoaded = true
+
+	addon:adjustBars()
 end
 
 function addon:adjustBars()
@@ -604,10 +531,19 @@ function addon:adjustBars()
 
 	local adj = 0
 	for i=1, addon.MAX_TIMERS do
+
+		--fix the text alignment based on our settings
+		addon:adjustTextAlignment(addon.timersTarget[i])
+		if canFocusT then
+			addon:adjustTextAlignment(addon.timersFocus[i])
+		end
+		addon:adjustTextAlignment(addon.timersPlayer[i])
+		addon:adjustTextAlignment(addon.timersSupport[i])
+
 		if XBT_DB.grow then
 			addon.timersTarget[i]:ClearAllPoints()
 			addon.timersTarget[i]:SetPoint("TOPLEFT", XBT_TargetAnchor, "BOTTOMRIGHT", 0, adj)
-			if isRetail then
+			if canFocusT then
 				addon.timersFocus[i]:ClearAllPoints()
 				addon.timersFocus[i]:SetPoint("TOPLEFT", XBT_FocusAnchor, "BOTTOMRIGHT", 0, adj)
 			end
@@ -618,7 +554,7 @@ function addon:adjustBars()
 		else
 			addon.timersTarget[i]:ClearAllPoints()
 			addon.timersTarget[i]:SetPoint("BOTTOMLEFT", XBT_TargetAnchor, "TOPRIGHT", 0, (adj * -1))
-			if isRetail then
+			if canFocusT then
 				addon.timersFocus[i]:ClearAllPoints()
 				addon.timersFocus[i]:SetPoint("BOTTOMLEFT", XBT_FocusAnchor, "TOPRIGHT", 0, (adj * -1))
 			end
@@ -681,7 +617,7 @@ addon:SetScript("OnUpdate", function(self, elapsed)
 			self:ProcessBuffBar(addon.timersTarget.buffs[i])
 			tCount = tCount + 1
 		end
-		if isRetail and addon.timersFocus.buffs[i].active then
+		if canFocusT and addon.timersFocus.buffs[i].active then
 			self:ProcessBuffBar(addon.timersFocus.buffs[i])
 			fCount = fCount + 1
 		end
@@ -699,7 +635,7 @@ addon:SetScript("OnUpdate", function(self, elapsed)
 	if tCount > 0 then
 		addon:ShowBuffs("target")
 	end
-	if isRetail and fCount > 0 then
+	if canFocusT and fCount > 0 then
 		addon:ShowBuffs("focus")
 	end
 	if pCount > 0 then
@@ -708,7 +644,7 @@ addon:SetScript("OnUpdate", function(self, elapsed)
 	if sCount > 0 then
 		--if the player is not in anytype of group then clear the support bars
 		--they only are for party and raid
-		if not IsInGroup() then
+		if not IsInGroup() or not XBT_DB.showSupport or not supportGUID or not supportUnitID then
 			addon:ClearBuffs("support")
 		else
 			addon:ShowBuffs("support")
@@ -718,6 +654,7 @@ end)
 
 function addon:ProcessBuffs(id)
 	if not barsLoaded then return end
+	if XBT_DB.hideInRestedAreas and IsResting() then return end
 
 	local unitID = id
 	local class = select(2, UnitClass("player"))
@@ -728,6 +665,7 @@ function addon:ProcessBuffs(id)
 		["MONK"] = true,
 		["PRIEST"] = true,
 		["PALADIN"] = true,
+		["EVOKER"] = true,
 	}
 
 	if XBT_DB.healersOnly and not healers[class] then
@@ -745,13 +683,16 @@ function addon:ProcessBuffs(id)
 	end
 
 	for i=1, addon.MAX_TIMERS do
+		local passChk = false
+		local isInfinite = false
+		local auraData = UnitAura(unitID, i, 'PLAYER|HELPFUL')
 
-		local auraData = UnitAura(id, i, 'PLAYER|HELPFUL')
+		--turn off by default, activate only if we have something
+		sdTimer.buffs[i].active = false
+
 		if auraData then
-			local passChk = false
-			local isInfinite = false
 
-			--only allow infinite debuffs if the user enabled it
+			--only allow infinite buff if the user enabled it
 			if XBT_DB.showInfinite then
 				--auras are on so basically were allowing everything
 				passChk = true
@@ -798,13 +739,11 @@ function addon:ProcessBuffs(id)
 					sdTimer.buffs[i].beforeEnd = beforeEnd
 					sdTimer.buffs[i].endTime = auraData.expirationTime
 					sdTimer.buffs[i].totalBarLength = totalBarLength
-					sdTimer.buffs[i].stacks = auraData.charges or 0
+					sdTimer.buffs[i].stacks = auraData.applications or 0
 					sdTimer.buffs[i].percent = barPercent
 					sdTimer.buffs[i].active = true
 					sdTimer.buffs[i].isInfinite = isInfinite
 				end
-			else
-				sdTimer.buffs[i].active = false
 			end
 		end
 	end
@@ -825,19 +764,20 @@ function addon:ClearBuffs(id)
 end
 
 function addon:ReloadBuffs()
-	local class = select(2, UnitClass("player"))
-
 	addon:ClearBuffs("target")
-	if isRetail then
+	if canFocusT then
 		addon:ClearBuffs("focus")
 	end
 	addon:ClearBuffs("player")
 	addon:ClearBuffs("support")
 
+	--don't show if we have this option enabled
+	if XBT_DB.hideInRestedAreas and IsResting() then return end
+
 	if XBT_DB.showTarget then
 		addon:ProcessBuffs("target")
 	end
-	if isRetail and XBT_DB.showFocus then
+	if canFocusT and XBT_DB.showFocus then
 		addon:ProcessBuffs("focus")
 	end
 	if XBT_DB.showPlayer then
@@ -860,7 +800,7 @@ function addon:ShowBuffs(id)
 
 	if id == "target" then
 		sdTimer = addon.timersTarget
-	elseif id == "focus" and isRetail then
+	elseif id == "focus" and canFocusT then
 		sdTimer = addon.timersFocus
 	elseif id == "player" then
 		sdTimer = addon.timersPlayer
@@ -908,11 +848,10 @@ function addon:ShowBuffs(id)
 
 			if XBT_DB.showIcon then
 				sdTimer[i].icon:SetTexture(tmpList[i].iconTex)
-				sdTimer[i].spellText2:SetText("")
 				if XBT_DB.showSpellName then
-					sdTimer[i].spellText:SetText(tmpList[i].spellName)
+					sdTimer[i].spellNameText:SetText(tmpList[i].spellName)
 				else
-					sdTimer[i].spellText:SetText("")
+					sdTimer[i].spellNameText:SetText("")
 				end
 				if tmpList[i].stacks > 0 then
 					sdTimer[i].stacktext:SetText(tmpList[i].stacks)
@@ -921,12 +860,15 @@ function addon:ShowBuffs(id)
 				end
 			else
 				sdTimer[i].icon:SetTexture(nil)
-				sdTimer[i].spellText:SetText("")
 				sdTimer[i].stacktext:SetText(nil)
-				if tmpList[i].stacks > 0 then
-					sdTimer[i].spellText2:SetText(tmpList[i].spellName.." ["..tmpList[i].stacks.."]")
+				if XBT_DB.showSpellName then
+					if tmpList[i].stacks > 0 then
+						sdTimer[i].spellNameText:SetText(tmpList[i].spellName.." ["..tmpList[i].stacks.."]")
+					else
+						sdTimer[i].spellNameText:SetText(tmpList[i].spellName)
+					end
 				else
-					sdTimer[i].spellText2:SetText(tmpList[i].spellName)
+					sdTimer[i].spellNameText:SetText("")
 				end
 			end
 			if tmpList[i].isInfinite then

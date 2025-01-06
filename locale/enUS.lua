@@ -98,3 +98,6 @@ L.BarTargetAnchor = "xanBuffTimers: Target Anchor"
 L.BarFocusAnchor = "xanBuffTimers: Focus Anchor"
 L.BarPlayerAnchor = "xanBuffTimers: Player Anchor"
 L.BarSupportAnchor = "xanBuffTimers: Support Anchor"
+
+L.HideInRested = "Hide Buff Bars when in a Rested Area."
+L.ShowTimerOnRight = "Show the timer on the right of debuff icon."

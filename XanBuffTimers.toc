@@ -3,7 +3,7 @@
 ## Notes: A small text based progress bar system for target/focus/player buffs.
 ## Notes-zhCN: 一个基于文本的小进度条系统，用于显示目标/焦点/玩家 BUFF。
 ## Author: Xruptor
-## Version: 7.1
+## Version: 7.2
 ## IconTexture: 369214
 ## X-Curse-Project-ID: 28655
 ## X-WoWI-ID: 19255

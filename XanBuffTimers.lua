@@ -682,6 +682,11 @@ function addon:ProcessBuffs(id)
 		unitID = supportUnitID
 	end
 
+	if UnitIsDeadOrGhost(unitID) then
+		addon:ClearBuffs(id)
+		return
+	end
+
 	for i=1, addon.MAX_TIMERS do
 		local passChk = false
 		local isInfinite = false
@@ -808,6 +813,19 @@ function addon:ShowBuffs(id)
 		sdTimer = addon.timersSupport
 	else
 		locked = false
+		return
+	end
+
+	local unitID = id
+	if id == "support" then
+		if not supportGUID or not supportUnitID then
+			addon:ClearBuffs(id)
+			return
+		end
+		unitID = supportUnitID
+	end
+	if UnitIsDeadOrGhost(unitID) then
+		addon:ClearBuffs(id)
 		return
 	end
 

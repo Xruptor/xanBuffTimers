@@ -59,10 +59,10 @@ local UnitAura = C_UnitAuras.GetAuraDataByIndex
 local UnitGUID = UnitGUID
 
 local timerList = {
-	["target"] = addon.timersTarget,
-	["focus"] = addon.timersFocus,
-	["player"] = addon.timersPlayer,
-	["support"] = addon.timersSupport,
+	target = addon.timersTarget,
+	focus = addon.timersFocus,
+	player = addon.timersPlayer,
+	support = addon.timersSupport,
 }
 
 local barsLoaded = false
@@ -188,8 +188,6 @@ function addon:EnableAddon()
 	--create our bars
 	addon:generateBars()
 
-	addon:RegisterEvent("PLAYER_UPDATE_RESTING")
-	addon:RegisterEvent("PLAYER_ENTERING_WORLD")
 	addon:RegisterEvent("UNIT_AURA")
 	addon:RegisterEvent("PLAYER_TARGET_CHANGED")
 
@@ -289,17 +287,6 @@ function addon:EnableAddon()
 	addon:ReloadBuffs()
 end
 
-function addon:PLAYER_UPDATE_RESTING()
-	if XBT_DB.hideInRestedAreas and IsResting() then
-		addon:ReloadBuffs()
-	end
-end
-function addon:PLAYER_ENTERING_WORLD()
-	if XBT_DB.hideInRestedAreas and IsResting() then
-		addon:ReloadBuffs()
-	end
-end
-
 function addon:GROUP_ROSTER_UPDATE()
 	supportGUID, supportUnitID = addon:CheckSupportGUID()
 end
@@ -315,14 +302,65 @@ function addon:PLAYER_FOCUS_CHANGED()
 	addon:ProcessBuffs("focus")
 end
 
+addon.auraList = {
+	target = {},
+	focus = {},
+	player = {},
+	support = {},
+}
+local allowedList = {
+	player = true,
+	pet = true,
+	vehicle = true,
+}
+
+local function checkPlayerCasted(auraInfo, unitID)
+	local isPlayer = false
+	local isFullUpdate = not auraInfo or auraInfo.isFullUpdate
+
+	if isFullUpdate then
+		--force a full scan anyways
+		isPlayer = true
+	else
+		if auraInfo then
+			if auraInfo.addedAuras then
+				for _, data in next, auraInfo.addedAuras do
+					--only process Helpful spells that we cast
+					if data.isHelpful and data.sourceUnit and allowedList[data.sourceUnit] then
+						isPlayer = true
+					end
+				end
+			end
+
+			if auraInfo.updatedAuraInstanceIDs then
+				for _, auraInstanceID in next, auraInfo.updatedAuraInstanceIDs do
+					if addon.auraList[unitID][auraInstanceID] then
+						isPlayer = true
+					end
+				end
+			end
+
+			if auraInfo.removedAuraInstanceIDs then
+				for _, auraInstanceID in next, auraInfo.removedAuraInstanceIDs do
+					if addon.auraList[unitID][auraInstanceID] then
+						isPlayer = true
+					end
+				end
+			end
+		end
+	end
+
+	return isPlayer
+end
+
 function addon:UNIT_AURA(event, unit, info)
-	if XBT_DB.showFocus and canFocusT and unit == "focus" then
+	if XBT_DB.showFocus and canFocusT and unit == "focus" and checkPlayerCasted(info, unit) then
 		addon:ProcessBuffs("focus")
-	elseif XBT_DB.showTarget and unit == "target" then
+	elseif XBT_DB.showTarget and unit == "target" and checkPlayerCasted(info, unit) then
 		addon:ProcessBuffs("target")
-	elseif XBT_DB.showPlayer and (unit == "player" or unit == "vehicle") then
+	elseif XBT_DB.showPlayer and allowedList[unit] and checkPlayerCasted(info, "player") then
 		addon:ProcessBuffs("player")
-	elseif XBT_DB.showSupport and supportUnitID and unit == supportUnitID then
+	elseif XBT_DB.showSupport and supportUnitID and unit == supportUnitID and checkPlayerCasted(info, "support") then
 		addon:ProcessBuffs("support")
 	end
 end
@@ -654,7 +692,6 @@ end)
 
 function addon:ProcessBuffs(id)
 	if not barsLoaded then return end
-	if XBT_DB.hideInRestedAreas and IsResting() then return end
 
 	local unitID = id
 	local class = select(2, UnitClass("player"))
@@ -687,6 +724,9 @@ function addon:ProcessBuffs(id)
 		return
 	end
 
+	--reset our list so it's clean, otherwise we may have carry overs from target swaps and this list can get big
+	addon.auraList[id] = table.wipe(addon.auraList[id] or {})
+
 	for i=1, addon.MAX_TIMERS do
 		local passChk = false
 		local isInfinite = false
@@ -696,6 +736,8 @@ function addon:ProcessBuffs(id)
 		sdTimer.buffs[i].active = false
 
 		if auraData then
+			--add to our global aura list
+			addon.auraList[id][auraData.auraInstanceID] = id
 
 			--only allow infinite buff if the user enabled it
 			if XBT_DB.showInfinite then
@@ -761,6 +803,8 @@ function addon:ClearBuffs(id)
 	local sdTimer = timerList[id] --makes things easier to read
 	local adj = 0
 
+	addon.auraList[id] = table.wipe(addon.auraList[id] or {})
+
 	for i=1, addon.MAX_TIMERS do
 		sdTimer.buffs[i].active = false
 		sdTimer[i]:Hide()
@@ -775,9 +819,6 @@ function addon:ReloadBuffs()
 	end
 	addon:ClearBuffs("player")
 	addon:ClearBuffs("support")
-
-	--don't show if we have this option enabled
-	if XBT_DB.hideInRestedAreas and IsResting() then return end
 
 	if XBT_DB.showTarget then
 		addon:ProcessBuffs("target")
@@ -858,8 +899,11 @@ function addon:ShowBuffs(id)
 		end
 	end
 
+	--don't show if we have this option enabled and we are resting
+	local isRested = XBT_DB.hideInRestedAreas and IsResting()
+
 	for i=1, addon.MAX_TIMERS do
-		if tmpList[i] then
+		if tmpList[i] and not isRested then
 			--display the information
 			---------------------------------------
 			sdTimer[i].Bar:SetText( string.sub(BAR_TEXT, 1, tmpList[i].totalBarLength) )
@@ -893,7 +937,7 @@ function addon:ShowBuffs(id)
 				sdTimer[i].timetext:SetText("∞")
 				sdTimer[i].Bar:SetTextColor(128/255,128/255,128/255)
 			else
-				sdTimer[i].timetext:SetText(addon:GetTimeText(ceil(tmpList[i].beforeEnd)))
+				sdTimer[i].timetext:SetText(addon:GetTimeText(floor(tmpList[i].beforeEnd)))
 				sdTimer[i].Bar:SetTextColor(addon:getBarColor(tmpList[i].durationTime, tmpList[i].beforeEnd))
 			end
 			---------------------------------------
@@ -973,16 +1017,16 @@ function addon:getBarColor(dur, expR)
 end
 
 function addon:GetTimeText(timeLeft)
-	if timeLeft <= 0 then return nil end
+	if timeLeft <= 0 then return string.format("%d"..L.TimeSecond, 0) end
 
 	local hours, minutes, seconds = 0, 0, 0
 	if( timeLeft >= 3600 ) then
-		hours = ceil(timeLeft / 3600)
+		hours = floor(timeLeft / 3600)
 		timeLeft = mod(timeLeft, 3600)
 	end
 
 	if( timeLeft >= 60 ) then
-		minutes = ceil(timeLeft / 60)
+		minutes = floor(timeLeft / 60)
 		timeLeft = mod(timeLeft, 60)
 	end
 
@@ -995,6 +1039,6 @@ function addon:GetTimeText(timeLeft)
 	elseif seconds > 0 then
 		return string.format("%d"..L.TimeSecond, seconds)
 	else
-		return nil
+		return string.format("%d"..L.TimeSecond, 0)
 	end
 end

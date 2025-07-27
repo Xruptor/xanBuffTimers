@@ -72,9 +72,6 @@ local barsLoaded = false
 ----------------------
 
 function addon:CheckSupportGUID()
-	supportGUID = nil --reset
-	supportUnitID = nil --reset
-
 	if not XBT_DB.showSupport then return end
 
 	local tankGUID

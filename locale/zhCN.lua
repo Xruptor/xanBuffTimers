@@ -1,6 +1,6 @@
-local ADDON_NAME, addon = ...
+local ADDON_NAME, private = ...
 
-local L = LibStub("AceLocale-3.0"):NewLocale(ADDON_NAME, "zhCN")
+local L = private:NewLocale("zhCN")
 if not L then return end
 
 L.SlashAnchor = "锚点"
@@ -98,3 +98,6 @@ L.BarTargetAnchor = "xanBuffTimers: 目标锚点"
 L.BarFocusAnchor = "xanBuffTimers: 焦点锚点"
 L.BarPlayerAnchor = "xanBuffTimers: 玩家锚点"
 L.BarSupportAnchor = "xanBuffTimers: 战友锚点"
+
+L.HideInRested = "在休息区时隐藏增益条。"
+L.ShowTimerOnRight = "在减益图标右侧显示计时器。"

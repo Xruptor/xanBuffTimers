@@ -1,14 +1,9 @@
 
-local ADDON_NAME, addon = ...
+local ADDON_NAME, private = ...
 if not _G[ADDON_NAME] then
 	_G[ADDON_NAME] = CreateFrame("Frame", ADDON_NAME, UIParent, BackdropTemplateMixin and "BackdropTemplate")
 end
-addon = _G[ADDON_NAME]
-
-local debugf = tekDebug and tekDebug:GetFrame(ADDON_NAME)
-local function Debug(...)
-    if debugf then debugf:AddMessage(string.join(", ", tostringall(...))) end
-end
+local addon = _G[ADDON_NAME]
 
 addon:RegisterEvent("ADDON_LOADED")
 addon:SetScript("OnEvent", function(self, event, ...)
@@ -32,7 +27,7 @@ addon:SetScript("OnEvent", function(self, event, ...)
 	end
 end)
 
-local L = LibStub("AceLocale-3.0"):GetLocale(ADDON_NAME)
+local L = (type(private) == "table" and private.L) or {}
 local canFocusT = (FocusUnit and FocusFrame) or false
 
 addon.timersTarget = {}
@@ -55,7 +50,26 @@ local locked = false
 
 local supportGUID
 local supportUnitID
-local UnitAura = C_UnitAuras.GetAuraDataByIndex
+local AURA_FILTER = "HELPFUL|PLAYER"
+local function GetAuraDataByIndex(unit, index, filter)
+	if C_UnitAuras and C_UnitAuras.GetAuraDataByIndex then
+		return C_UnitAuras.GetAuraDataByIndex(unit, index, filter)
+	end
+
+	local name, icon, count, _, duration, expirationTime, sourceUnit, _, _, spellId = _G.UnitAura(unit, index, filter)
+	if not name then return nil end
+
+	return {
+		name = name,
+		icon = icon,
+		applications = count,
+		duration = duration,
+		expirationTime = expirationTime,
+		sourceUnit = sourceUnit,
+		spellId = spellId,
+		isHelpful = true,
+	}
+end
 local UnitGUID = UnitGUID
 
 local timerList = {
@@ -310,6 +324,14 @@ local allowedList = {
 	pet = true,
 	vehicle = true,
 }
+local HEALERS = {
+	DRUID = true,
+	SHAMAN = true,
+	MONK = true,
+	PRIEST = true,
+	PALADIN = true,
+	EVOKER = true,
+}
 
 local function checkPlayerCasted(auraInfo, unitID)
 	local isPlayer = false
@@ -323,7 +345,7 @@ local function checkPlayerCasted(auraInfo, unitID)
 			if auraInfo.addedAuras then
 				for _, data in next, auraInfo.addedAuras do
 					--only process Helpful spells that we cast
-					if data.isHelpful and data.sourceUnit and allowedList[data.sourceUnit] then
+					if data.isHelpful and ((data.sourceUnit and allowedList[data.sourceUnit]) or data.isFromPlayerOrPlayerPet) then
 						isPlayer = true
 					end
 				end
@@ -452,7 +474,7 @@ function addon:CreateBuffTimers()
     Frm.icon:SetWidth(ICON_SIZE)
     Frm.icon:SetHeight(ICON_SIZE)
 	Frm.icon:SetTexture("Interface\\Icons\\Spell_Shadow_Shadowbolt")
-    Frm.icon:SetAllPoints(true)
+    Frm.icon:SetAllPoints(Frm)
 
     Frm.stacktext = Frm:CreateFontString(nil, "OVERLAY");
     Frm.stacktext:SetFont(STANDARD_TEXT_FONT,10,"OUTLINE")
@@ -474,7 +496,7 @@ function addon:CreateBuffTimers()
     Frm.spellNameText:SetPoint("RIGHT", Frm.icon, "LEFT" , -5, 0)
 
 	Frm.Bar = Frm:CreateFontString(nil, "OVERLAY")
-	Frm.Bar:SetFont(STANDARD_TEXT_FONT, 14, "OUTLINE, MONOCHROME")
+	Frm.Bar:SetFont(STANDARD_TEXT_FONT, 14, "OUTLINE")
 	Frm.Bar:SetText(BAR_TEXT)
 	Frm.Bar:SetPoint("LEFT", Frm.icon, "RIGHT", 33, 0)
 
@@ -693,16 +715,7 @@ function addon:ProcessBuffs(id)
 	local unitID = id
 	local class = select(2, UnitClass("player"))
 
-	local healers = {
-		["DRUID"] = true,
-		["SHAMAN"] = true,
-		["MONK"] = true,
-		["PRIEST"] = true,
-		["PALADIN"] = true,
-		["EVOKER"] = true,
-	}
-
-	if XBT_DB.healersOnly and not healers[class] then
+	if XBT_DB.healersOnly and not HEALERS[class] then
 		return
 	end
 
@@ -727,14 +740,15 @@ function addon:ProcessBuffs(id)
 	for i=1, addon.MAX_TIMERS do
 		local passChk = false
 		local isInfinite = false
-		local auraData = UnitAura(unitID, i, 'PLAYER|HELPFUL')
+		local auraData = GetAuraDataByIndex(unitID, i, AURA_FILTER)
 
 		--turn off by default, activate only if we have something
 		sdTimer.buffs[i].active = false
 
 		if auraData then
 			--add to our global aura list
-			addon.auraList[id][auraData.auraInstanceID] = id
+			local auraKey = auraData.auraInstanceID or auraData.spellId or i
+			addon.auraList[id][auraKey] = id
 
 			--only allow infinite buff if the user enabled it
 			if XBT_DB.showInfinite then

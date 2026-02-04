@@ -3,7 +3,7 @@
 ## Notes: A small text based progress bar system for target/focus/player buffs.
 ## Notes-zhCN: 一个基于文本的小进度条系统，用于显示目标/焦点/玩家 BUFF。
 ## Author: Xruptor
-## Version: 8.0
+## Version: 8.2
 ## IconTexture: 369214
 ## X-Curse-Project-ID: 28655
 ## X-WoWI-ID: 19255
@@ -13,6 +13,7 @@
 
 libs\LibStub\LibStub.lua
 libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
+libs\LibClassicDurations\LibClassicDurations.xml
 locale\locales.lua
 locale\enUS.lua
 locale\deDE.lua

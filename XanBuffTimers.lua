@@ -51,12 +51,30 @@ local locked = false
 local supportGUID
 local supportUnitID
 local AURA_FILTER = "HELPFUL|PLAYER"
-local function GetAuraDataByIndex(unit, index, filter)
-	if C_UnitAuras and C_UnitAuras.GetAuraDataByIndex then
-		return C_UnitAuras.GetAuraDataByIndex(unit, index, filter)
-	end
+local BAR_TEXT_LEN = string.len(BAR_TEXT)
 
-	local name, icon, count, _, duration, expirationTime, sourceUnit, _, _, spellId = _G.UnitAura(unit, index, filter)
+local WOW_PROJECT_ID = _G.WOW_PROJECT_ID
+local WOW_PROJECT_MAINLINE = _G.WOW_PROJECT_MAINLINE
+local WOW_PROJECT_CLASSIC = _G.WOW_PROJECT_CLASSIC
+local isClassicProject = (WOW_PROJECT_ID and WOW_PROJECT_CLASSIC and WOW_PROJECT_ID == WOW_PROJECT_CLASSIC) or false
+
+local LibClassicDurations
+if isClassicProject and _G.LibStub then
+	LibClassicDurations = LibStub("LibClassicDurations", true)
+	if LibClassicDurations and LibClassicDurations.Register then
+		LibClassicDurations:Register(ADDON_NAME)
+	end
+end
+
+local GetAuraDataByIndex = C_UnitAuras and C_UnitAuras.GetAuraDataByIndex
+
+local function HasValidTimes(duration, expirationTime)
+	return type(duration) == "number" and duration > 0
+		and type(expirationTime) == "number" and expirationTime > 0
+end
+
+local function BuildAuraFromUnitAura(unit, index, filter, unitAuraFunc)
+	local name, icon, count, _, duration, expirationTime, sourceUnit, _, _, spellId = unitAuraFunc(unit, index, filter)
 	if not name then return nil end
 
 	return {
@@ -69,6 +87,30 @@ local function GetAuraDataByIndex(unit, index, filter)
 		spellId = spellId,
 		isHelpful = true,
 	}
+end
+
+local function GetAuraData(unit, index, filter)
+	if GetAuraDataByIndex then
+		local auraData = GetAuraDataByIndex(unit, index, filter)
+		if auraData and isClassicProject and LibClassicDurations and LibClassicDurations.UnitAuraWrapper
+			and not HasValidTimes(auraData.duration, auraData.expirationTime) then
+			local lcdAura = BuildAuraFromUnitAura(unit, index, filter, LibClassicDurations.UnitAuraWrapper)
+			if lcdAura and HasValidTimes(lcdAura.duration, lcdAura.expirationTime) then
+				return lcdAura
+			end
+		end
+		return auraData
+	end
+
+	local auraData = BuildAuraFromUnitAura(unit, index, filter, UnitAura)
+	if auraData and isClassicProject and LibClassicDurations and LibClassicDurations.UnitAuraWrapper
+		and not HasValidTimes(auraData.duration, auraData.expirationTime) then
+		local lcdAura = BuildAuraFromUnitAura(unit, index, filter, LibClassicDurations.UnitAuraWrapper)
+		if lcdAura and HasValidTimes(lcdAura.duration, lcdAura.expirationTime) then
+			return lcdAura
+		end
+	end
+	return auraData
 end
 local UnitGUID = UnitGUID
 
@@ -740,7 +782,7 @@ function addon:ProcessBuffs(id)
 	for i=1, addon.MAX_TIMERS do
 		local passChk = false
 		local isInfinite = false
-		local auraData = GetAuraDataByIndex(unitID, i, AURA_FILTER)
+		local auraData = GetAuraData(unitID, i, AURA_FILTER)
 
 		--turn off by default, activate only if we have something
 		sdTimer.buffs[i].active = false
@@ -776,14 +818,14 @@ function addon:ProcessBuffs(id)
 					barPercent = 200 --anything higher than 100 will get pushed to top of list, so lets make it 200 -> addon:ShowBuffs(id)
 					auraData.duration = 0
 					auraData.expirationTime = 0
-					totalBarLength = string.len(BAR_TEXT) --just make it full bar length, it will never decrease anyways
+					totalBarLength = BAR_TEXT_LEN --just make it full bar length, it will never decrease anyways
 				else
 					beforeEnd = auraData.expirationTime - GetTime()
 					startTime = (auraData.expirationTime - auraData.duration)
 					totalDuration = (auraData.expirationTime - startTime) --total duration of the spell
-					totalBarSegment = (string.len(BAR_TEXT) / totalDuration) --lets get how much each segment of the bar string would value up to 100%
+					totalBarSegment = (BAR_TEXT_LEN / totalDuration) --lets get how much each segment of the bar string would value up to 100%
 					totalBarLength = totalBarSegment * beforeEnd --now get the individual bar segment value and multiply it with current duration
-					barPercent = (totalBarLength / string.len(BAR_TEXT)) * 100
+					barPercent = (totalBarLength / BAR_TEXT_LEN) * 100
 				end
 
 				if barPercent > 0 or beforeEnd > 0 or totalBarLength > 0 then

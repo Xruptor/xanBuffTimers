@@ -12,7 +12,8 @@ L.SlashAnchorInfo = "切換可移動錨點。"
 L.SlashReset = "重置"
 L.SlashResetText = "重置錨點位置"
 L.SlashResetInfo = "重置錨點位置。"
-L.SlashResetAlert = "xanBuffTimers: 錨點位置已重置！"
+
+L.Reset = "重置"
 
 L.SlashScale = "縮放"
 L.SlashScaleSet = "xanBuffTimers: 縮放比例設定為 [|cFF20ff20%s|r]"
@@ -101,3 +102,9 @@ L.BarSupportAnchor = "xanBuffTimers: 戰友錨點"
 
 L.HideInRested = "在休息區時隱藏增益條。"
 L.ShowTimerOnRight = "在減益圖示右側顯示計時器。"
+
+L.GraphicBarChkBtn = "使用圖形化增益條。"
+L.BarColorText = "增益條顏色。"
+
+L.RetailWarningTitle = "警告 請務必閱讀!!! 僅限正式服"
+L.RetailWarningBody = "由於 Blizzard 的 API 變更，本插件在正式服已無法正常運作。\n\nBlizzard 現在將戰鬥相關的光環資料標記為受保護的"秘密值"。這表示插件在戰鬥中無法讀取或計算 Buff 持續時間、到期時間等資料。而本插件必須計算剩餘時間才能繪製進度條，因此核心功能被客戶端直接阻止。\n\n|cFFFFFF00這不是 xanBuffTimers 的 Bug。|r\n\n|cFFFF2020這是 Blizzard 強制施加的限制。|r\n\n類似的光環/計時插件（例如 WeakAuras 及其他 Buff/Debuff 追蹤插件）也遭遇同樣問題，無法在正式服中顯示準確的戰鬥計時。\n\n簡而言之：正式服阻止了本插件所需的精確資料，因此 Buff 條無法工作。本插件在 Classic、TBC、Wrath 等非正式服客戶端中仍可正常運作。"

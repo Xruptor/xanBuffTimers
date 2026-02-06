@@ -10,18 +10,36 @@ local configFrame = addon.configFrame
 local L = (type(private) == "table" and private.L) or {}
 local canFocusT = (FocusUnit and FocusFrame) or false
 
-local lastObject
-local function addConfigEntry(objEntry, adjustX, adjustY)
+local layout = {
+	parent = nil,
+	column = nil,
+}
+
+local function initLayout(parent)
+	layout.parent = parent
+	layout.column = { x = 18, y = -10, last = nil }
+end
+
+local function addConfigEntry(objEntry, adjustY)
+	local col = layout.column
+	if not col or not layout.parent then return end
 
 	objEntry:ClearAllPoints()
-
-	if not lastObject then
-		objEntry:SetPoint("TOPLEFT", 20, -120)
+	if not col.last then
+		objEntry:SetPoint("TOPLEFT", layout.parent, "TOPLEFT", col.x, col.y)
 	else
-		objEntry:SetPoint("LEFT", lastObject, "BOTTOMLEFT", adjustX or 0, adjustY or -30)
+		objEntry:SetPoint("LEFT", col.last, "BOTTOMLEFT", 0, adjustY or -18)
 	end
 
-	lastObject = objEntry
+	col.last = objEntry
+end
+
+local function createHeader(parentFrame, text)
+	local header = parentFrame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+	header:SetText(text)
+	header:SetHeight(18)
+	header:SetJustifyH("LEFT")
+	return header
 end
 
 local chkBoxIndex = 0
@@ -42,6 +60,17 @@ local function createButton(parentFrame, displayText)
 	button:SetText(displayText)
 	button:SetHeight(30)
 	button:SetWidth(button:GetTextWidth() + 30)
+
+	return button
+end
+
+local function createSmallButton(parentFrame, displayText)
+	buttonIndex = buttonIndex + 1
+
+	local button = CreateFrame("Button", ADDON_NAME.."_config_button_" .. buttonIndex, parentFrame, "UIPanelButtonTemplate")
+	button:SetText(displayText)
+	button:SetHeight(22)
+	button:SetWidth(button:GetTextWidth() + 18)
 
 	return button
 end
@@ -88,6 +117,58 @@ local function createSlider(parentFrame, displayText, minVal, maxVal, setStep)
 	slider.currVal = currVal
 
 	return slider
+end
+
+local function openColorPicker(r, g, b, onChange, onCancel)
+	if not ColorPickerFrame then
+		onChange(r, g, b)
+		DEFAULT_CHAT_FRAME:AddMessage(ADDON_NAME..": Color picker unavailable, using current color.")
+		return
+	end
+	if ColorPickerFrame and ColorPickerFrame.SetupColorPickerAndShow then
+		local info = {
+			r = r, g = g, b = b,
+			hasOpacity = false,
+			swatchFunc = function()
+				local nr, ng, nb = ColorPickerFrame:GetColorRGB()
+				onChange(nr, ng, nb)
+			end,
+			cancelFunc = function(prev)
+				if prev then onCancel(prev.r, prev.g, prev.b) end
+			end,
+		}
+		ColorPickerFrame:SetupColorPickerAndShow(info)
+	else
+		ColorPickerFrame.hasOpacity = false
+		ColorPickerFrame.previousValues = { r = r, g = g, b = b }
+		ColorPickerFrame.func = function()
+			local nr, ng, nb = ColorPickerFrame:GetColorRGB()
+			onChange(nr, ng, nb)
+		end
+		ColorPickerFrame.cancelFunc = function(prev)
+			if prev then onCancel(prev.r, prev.g, prev.b) end
+		end
+		ColorPickerFrame:SetColorRGB(r, g, b)
+		ColorPickerFrame:Show()
+	end
+end
+
+local function createColorSwatch(parentFrame, displayText)
+	local swatch = CreateFrame("Button", nil, parentFrame)
+	swatch:SetSize(260, 24)
+
+	swatch.text = swatch:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+	swatch.text:SetPoint("LEFT", swatch, "LEFT", 0, 0)
+	swatch.text:SetJustifyH("LEFT")
+	swatch.text:SetText(displayText)
+
+	swatch.box = CreateFrame("Frame", nil, swatch, BackdropTemplateMixin and "BackdropTemplate")
+	swatch.box:SetSize(18, 18)
+	swatch.box:SetPoint("LEFT", swatch.text, "RIGHT", 10, 0)
+	swatch.box.bg = swatch.box:CreateTexture(nil, "BACKGROUND")
+	swatch.box.bg:SetAllPoints(swatch.box)
+
+	return swatch
 end
 
 local function LoadAboutFrame()
@@ -150,8 +231,23 @@ function configFrame:EnableConfig()
 
 	addon.aboutPanel = LoadAboutFrame()
 
+	--scroll frame for options to prevent overflow
+	local scrollFrame = CreateFrame("ScrollFrame", ADDON_NAME.."_ConfigScrollFrame", addon.aboutPanel, "UIPanelScrollFrameTemplate")
+	scrollFrame:SetPoint("TOPLEFT", addon.aboutPanel, "TOPLEFT", 12, -125)
+	scrollFrame:SetPoint("BOTTOMRIGHT", addon.aboutPanel, "BOTTOMRIGHT", -34, 16)
+
+	local content = CreateFrame("Frame", nil, scrollFrame)
+	content:SetSize(1, 800)
+	scrollFrame:SetScrollChild(content)
+	content.scrollFrame = scrollFrame
+
+	initLayout(content)
+
+	local headerActions = createHeader(content, L.ConfigHeaderActions or "Actions")
+	addConfigEntry(headerActions, -6)
+
 	--anchor
-	local btnAnchor = createButton(addon.aboutPanel, L.SlashAnchorText)
+	local btnAnchor = createButton(content, L.SlashAnchorText)
 	btnAnchor.func = function()
 		if XBT_TargetAnchor:IsVisible() then
 			XBT_TargetAnchor:Hide()
@@ -173,11 +269,11 @@ function configFrame:EnableConfig()
 	end
 	btnAnchor:SetScript("OnClick", btnAnchor.func)
 
-	addConfigEntry(btnAnchor, 0, -30)
+	addConfigEntry(btnAnchor, -20)
 	addon.aboutPanel.btnAnchor = btnAnchor
 
 	--reset
-	local btnReset = createButton(addon.aboutPanel, L.SlashResetText)
+	local btnReset = createButton(content, L.SlashResetText)
 	btnReset.func = function()
 		DEFAULT_CHAT_FRAME:AddMessage(L.SlashResetAlert)
 		XBT_TargetAnchor:ClearAllPoints()
@@ -193,11 +289,12 @@ function configFrame:EnableConfig()
 	end
 	btnReset:SetScript("OnClick", btnReset.func)
 
-	addConfigEntry(btnReset, 0, -25)
+	btnReset:ClearAllPoints()
+	btnReset:SetPoint("LEFT", btnAnchor, "RIGHT", 12, 0)
 	addon.aboutPanel.btnReset = btnReset
 
 	--scale
-	local sliderScale = createSlider(addon.aboutPanel, L.SlashScaleText, 0.5, 5, 0.1)
+	local sliderScale = createSlider(content, L.SlashScaleText, 0.5, 5, 0.1)
 	sliderScale:SetScript("OnShow", function()
 		sliderScale:SetValue(XBT_DB.scale)
 		sliderScale.currVal:SetText("("..XBT_DB.scale..")")
@@ -216,11 +313,78 @@ function configFrame:EnableConfig()
 	sliderScale:SetScript("OnValueChanged", sliderScale.sliderFunc)
 	sliderScale:SetScript("OnMouseUp", sliderScale.sliderMouseUp)
 
-	addConfigEntry(sliderScale, 0, -40)
+	addConfigEntry(sliderScale, -36)
 	addon.aboutPanel.sliderScale = sliderScale
 
+	--bar color (under scale)
+	local btnBarColor = createColorSwatch(content, L.BarColorText)
+	btnBarColor:SetScript("OnShow", function()
+		local clr = XBT_DB.barColor or { r = 0.30, g = 0.50, b = 1.0 }
+		btnBarColor.box.bg:SetColorTexture(clr.r, clr.g, clr.b)
+	end)
+	btnBarColor.func = function()
+		local clr = XBT_DB.barColor or { r = 0.30, g = 0.50, b = 1.0 }
+
+		local function setColor(r, g, b)
+			XBT_DB.barColor = { r = r, g = g, b = b }
+			btnBarColor.box.bg:SetColorTexture(r, g, b)
+			addon:ReloadBuffs()
+		end
+
+		openColorPicker(clr.r, clr.g, clr.b, setColor, setColor)
+	end
+	btnBarColor:SetScript("OnClick", btnBarColor.func)
+
+	addConfigEntry(btnBarColor, -32)
+	addon.aboutPanel.btnBarColor = btnBarColor
+
+	local btnBarColorReset = createSmallButton(content, L.Reset or "Reset")
+	btnBarColorReset:SetPoint("LEFT", btnBarColor.box, "RIGHT", 16, 0)
+	btnBarColorReset.func = function()
+		XBT_DB.barColor = { r = 0.30, g = 0.50, b = 1.0 }
+		btnBarColor.box.bg:SetColorTexture(XBT_DB.barColor.r, XBT_DB.barColor.g, XBT_DB.barColor.b)
+		addon:ReloadBuffs()
+	end
+	btnBarColorReset:SetScript("OnClick", btnBarColorReset.func)
+	addon.aboutPanel.btnBarColorReset = btnBarColorReset
+
+	--reload buffs
+	local btnReloadBuffs = createButton(content, L.SlashReloadText)
+	btnReloadBuffs.func = function()
+		addon:ReloadBuffs()
+		DEFAULT_CHAT_FRAME:AddMessage(L.SlashReloadAlert)
+	end
+	btnReloadBuffs:SetScript("OnClick", btnReloadBuffs.func)
+
+	addConfigEntry(btnReloadBuffs, -32)
+	addon.aboutPanel.btnReloadBuffs = btnReloadBuffs
+
+	local headerOptions = createHeader(content, L.ConfigHeaderOptions or "Options")
+	addConfigEntry(headerOptions, -28)
+
+	--graphic bar
+	local btnGraphicBar = createCheckbutton(content, L.GraphicBarChkBtn)
+	btnGraphicBar:SetScript("OnShow", function() btnGraphicBar:SetChecked(XBT_DB.useGraphicBar) end)
+	btnGraphicBar.func = function(slashSwitch)
+		local value = XBT_DB.useGraphicBar
+		if not slashSwitch then value = XBT_DB.useGraphicBar end
+
+		if value then
+			XBT_DB.useGraphicBar = false
+		else
+			XBT_DB.useGraphicBar = true
+		end
+
+		addon:adjustBars()
+		addon:ReloadBuffs()
+	end
+	btnGraphicBar:SetScript("OnClick", btnGraphicBar.func)
+
+	addConfigEntry(btnGraphicBar, -18)
+	addon.aboutPanel.btnGraphicBar = btnGraphicBar
+
 	--grow
-	local btnGrow = createCheckbutton(addon.aboutPanel, L.SlashGrowChkBtn)
+	local btnGrow = createCheckbutton(content, L.SlashGrowChkBtn)
 	btnGrow:SetScript("OnShow", function() btnGrow:SetChecked(XBT_DB.grow) end)
 	btnGrow.func = function(slashSwitch)
 		local value = XBT_DB.grow
@@ -238,11 +402,11 @@ function configFrame:EnableConfig()
 	end
 	btnGrow:SetScript("OnClick", btnGrow.func)
 
-	addConfigEntry(btnGrow, 0, -30)
+	addConfigEntry(btnGrow, -18)
 	addon.aboutPanel.btnGrow = btnGrow
 
 	--sort
-	local btnSort = createCheckbutton(addon.aboutPanel, L.SlashSortChkBtn)
+	local btnSort = createCheckbutton(content, L.SlashSortChkBtn)
 	btnSort:SetScript("OnShow", function() btnSort:SetChecked(XBT_DB.sort) end)
 	btnSort.func = function(slashSwitch)
 		local value = XBT_DB.sort
@@ -260,11 +424,11 @@ function configFrame:EnableConfig()
 	end
 	btnSort:SetScript("OnClick", btnSort.func)
 
-	addConfigEntry(btnSort, 0, -13)
+	addConfigEntry(btnSort, -14)
 	addon.aboutPanel.btnSort = btnSort
 
 	--target
-	local btnTarget = createCheckbutton(addon.aboutPanel, L.SlashTargetChkBtn)
+	local btnTarget = createCheckbutton(content, L.SlashTargetChkBtn)
 	btnTarget:SetScript("OnShow", function() btnTarget:SetChecked(XBT_DB.showTarget) end)
 	btnTarget.func = function(slashSwitch)
 		local value = XBT_DB.showTarget
@@ -282,12 +446,12 @@ function configFrame:EnableConfig()
 	end
 	btnTarget:SetScript("OnClick", btnTarget.func)
 
-	addConfigEntry(btnTarget, 0, -13)
+	addConfigEntry(btnTarget, -14)
 	addon.aboutPanel.btnTarget = btnTarget
 
 	if canFocusT then
 		--focus
-		local btnFocus = createCheckbutton(addon.aboutPanel, L.SlashFocusChkBtn)
+		local btnFocus = createCheckbutton(content, L.SlashFocusChkBtn)
 		btnFocus:SetScript("OnShow", function() btnFocus:SetChecked(XBT_DB.showFocus) end)
 		btnFocus.func = function(slashSwitch)
 			local value = XBT_DB.showFocus
@@ -305,12 +469,12 @@ function configFrame:EnableConfig()
 		end
 		btnFocus:SetScript("OnClick", btnFocus.func)
 
-		addConfigEntry(btnFocus, 0, -13)
+		addConfigEntry(btnFocus, -14)
 		addon.aboutPanel.btnFocus = btnFocus
 	end
 
 	--player
-	local btnPlayer = createCheckbutton(addon.aboutPanel, L.SlashPlayerChkBtn)
+	local btnPlayer = createCheckbutton(content, L.SlashPlayerChkBtn)
 	btnPlayer:SetScript("OnShow", function() btnPlayer:SetChecked(XBT_DB.showPlayer) end)
 	btnPlayer.func = function(slashSwitch)
 		local value = XBT_DB.showPlayer
@@ -328,11 +492,11 @@ function configFrame:EnableConfig()
 	end
 	btnPlayer:SetScript("OnClick", btnPlayer.func)
 
-	addConfigEntry(btnPlayer, 0, -13)
+	addConfigEntry(btnPlayer, -14)
 	addon.aboutPanel.btnPlayer = btnPlayer
 
 	--support
-	local btnSupport = createCheckbutton(addon.aboutPanel, L.SlashSupportChkBtn)
+	local btnSupport = createCheckbutton(content, L.SlashSupportChkBtn)
 	btnSupport:SetScript("OnShow", function() btnSupport:SetChecked(XBT_DB.showSupport) end)
 	btnSupport.func = function(slashSwitch)
 		local value = XBT_DB.showSupport
@@ -350,11 +514,11 @@ function configFrame:EnableConfig()
 	end
 	btnSupport:SetScript("OnClick", btnSupport.func)
 
-	addConfigEntry(btnSupport, 0, -13)
+	addConfigEntry(btnSupport, -14)
 	addon.aboutPanel.btnSupport = btnSupport
 
 	--infinite
-	local btnInfinite = createCheckbutton(addon.aboutPanel, L.SlashInfiniteChkBtn)
+	local btnInfinite = createCheckbutton(content, L.SlashInfiniteChkBtn)
 	btnInfinite:SetScript("OnShow", function() btnInfinite:SetChecked(XBT_DB.showInfinite) end)
 	btnInfinite.func = function(slashSwitch)
 		local value = XBT_DB.showInfinite
@@ -372,11 +536,11 @@ function configFrame:EnableConfig()
 	end
 	btnInfinite:SetScript("OnClick", btnInfinite.func)
 
-	addConfigEntry(btnInfinite, 0, -13)
+	addConfigEntry(btnInfinite, -14)
 	addon.aboutPanel.btnInfinite = btnInfinite
 
 	--icon
-	local btnIcon = createCheckbutton(addon.aboutPanel, L.SlashIconChkBtn)
+	local btnIcon = createCheckbutton(content, L.SlashIconChkBtn)
 	btnIcon:SetScript("OnShow", function() btnIcon:SetChecked(XBT_DB.showIcon) end)
 	btnIcon.func = function(slashSwitch)
 		local value = XBT_DB.showIcon
@@ -395,11 +559,11 @@ function configFrame:EnableConfig()
 	end
 	btnIcon:SetScript("OnClick", btnIcon.func)
 
-	addConfigEntry(btnIcon, 0, -13)
+	addConfigEntry(btnIcon, -14)
 	addon.aboutPanel.btnIcon = btnIcon
 
 	--spellname
-	local btnSpellName = createCheckbutton(addon.aboutPanel, L.SlashSpellNameChkBtn)
+	local btnSpellName = createCheckbutton(content, L.SlashSpellNameChkBtn)
 	btnSpellName:SetScript("OnShow", function() btnSpellName:SetChecked(XBT_DB.showSpellName) end)
 	btnSpellName.func = function(slashSwitch)
 		local value = XBT_DB.showSpellName
@@ -418,11 +582,11 @@ function configFrame:EnableConfig()
 	end
 	btnSpellName:SetScript("OnClick", btnSpellName.func)
 
-	addConfigEntry(btnSpellName, 0, -13)
+	addConfigEntry(btnSpellName, -14)
 	addon.aboutPanel.btnSpellName = btnSpellName
 
 	--show on right
-	local btnShowOnRight = createCheckbutton(addon.aboutPanel, L.ShowTimerOnRight)
+	local btnShowOnRight = createCheckbutton(content, L.ShowTimerOnRight)
 	btnShowOnRight:SetScript("OnShow", function() btnShowOnRight:SetChecked(XBT_DB.showTimerOnRight) end)
 	btnShowOnRight.func = function(slashSwitch)
 		local value = XBT_DB.showTimerOnRight
@@ -439,11 +603,11 @@ function configFrame:EnableConfig()
 	end
 	btnShowOnRight:SetScript("OnClick", btnShowOnRight.func)
 
-	addConfigEntry(btnShowOnRight, 0, -13)
+	addConfigEntry(btnShowOnRight, -14)
 	addon.aboutPanel.btnShowOnRight = btnShowOnRight
 
 	--healers
-	local btnHealers = createCheckbutton(addon.aboutPanel, L.SlashHealersChkBtn)
+	local btnHealers = createCheckbutton(content, L.SlashHealersChkBtn)
 	btnHealers:SetScript("OnShow", function() btnHealers:SetChecked(XBT_DB.healersOnly) end)
 	btnHealers.func = function(slashSwitch)
 		local value = XBT_DB.healersOnly
@@ -461,11 +625,11 @@ function configFrame:EnableConfig()
 	end
 	btnHealers:SetScript("OnClick", btnHealers.func)
 
-	addConfigEntry(btnHealers, 0, -13)
+	addConfigEntry(btnHealers, -14)
 	addon.aboutPanel.btnHealers = btnHealers
 
 	--hide in rested
-	local btnHideInRested = createCheckbutton(addon.aboutPanel, L.HideInRested)
+	local btnHideInRested = createCheckbutton(content, L.HideInRested)
 	btnHideInRested:SetScript("OnShow", function() btnHideInRested:SetChecked(XBT_DB.hideInRestedAreas) end)
 	btnHideInRested.func = function(slashSwitch)
 		local value = XBT_DB.hideInRestedAreas
@@ -481,17 +645,6 @@ function configFrame:EnableConfig()
 	end
 	btnHideInRested:SetScript("OnClick", btnHideInRested.func)
 
-	addConfigEntry(btnHideInRested, 0, -13)
+	addConfigEntry(btnHideInRested, -14)
 	addon.aboutPanel.btnHideInRested = btnHideInRested
-
-	--reload buffs
-	local btnReloadBuffs = createButton(addon.aboutPanel, L.SlashReloadText)
-	btnReloadBuffs.func = function()
-		addon:ReloadBuffs()
-		DEFAULT_CHAT_FRAME:AddMessage(L.SlashReloadAlert)
-	end
-	btnReloadBuffs:SetScript("OnClick", btnReloadBuffs.func)
-
-	addConfigEntry(btnReloadBuffs, 0, -15)
-	addon.aboutPanel.btnReloadBuffs = btnReloadBuffs
 end

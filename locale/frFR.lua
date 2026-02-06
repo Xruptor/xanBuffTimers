@@ -12,7 +12,8 @@ L.SlashAnchorInfo = "Bascule les ancres deplacement."
 L.SlashReset = "reinit"
 L.SlashResetText = "Reinitialiser les positions d'ancre"
 L.SlashResetInfo = "Reinitialise les positions d'ancre."
-L.SlashResetAlert = "xanBuffTimers: Positions d'ancre reinitialisees !"
+
+L.Reset = "Réinitialiser"
 
 L.SlashScale = "echelle"
 L.SlashScaleSet = "xanBuffTimers: l'echelle a ete definie sur [|cFF20ff20%s|r]"
@@ -101,3 +102,9 @@ L.BarSupportAnchor = "xanBuffTimers: Ancre du support"
 
 L.HideInRested = "Masquer les barres de buff en zone de repos."
 L.ShowTimerOnRight = "Afficher le minuteur a droite de l'icone de debuff."
+
+L.GraphicBarChkBtn = "Utiliser des barres graphiques de bonus."
+L.BarColorText = "Couleur de la barre de bonus."
+
+L.RetailWarningTitle = "AVERTISSEMENT VEUILLEZ LIRE !!! RETAIL UNIQUEMENT"
+L.RetailWarningBody = "Cet addon ne peut plus fonctionner sur Retail à cause des changements d’API de Blizzard.\n\nBlizzard marque désormais les données d’auras en combat comme des "valeurs secrètes" protégées. Cela signifie que les addons ne peuvent pas lire ni calculer les durées des buffs, les temps d’expiration ou d’autres données de combat pendant le combat. Comme cet addon doit calculer le temps restant pour afficher les barres, sa fonctionnalité principale est bloquée par le client.\n\n|cFFFFFF00Ce n’est pas un bug de xanBuffTimers.|r\n\n|cFFFF2020C’est une restriction imposée par Blizzard.|r\n\nDes addons d’auras/temporisateurs similaires (par exemple WeakAuras et d’autres trackers de buffs/debuffs) rencontrent le même problème et ne peuvent pas afficher des minuteries précises sur Retail.\n\nEn bref : Retail bloque l’accès aux données exactes dont cet addon a besoin, donc les barres de buffs ne fonctionneront pas. Cet addon reste pleinement fonctionnel sur Classic, TBC, Wrath et les autres clients non-Retail."

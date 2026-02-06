@@ -12,7 +12,8 @@ L.SlashAnchorInfo = "Alterna ancoras moveis."
 L.SlashReset = "reiniciar"
 L.SlashResetText = "Redefinir posicoes das ancoras"
 L.SlashResetInfo = "Redefine posicoes das ancoras."
-L.SlashResetAlert = "xanBuffTimers: Posicoes das ancoras foram redefinidas!"
+
+L.Reset = "Reiniciar"
 
 L.SlashScale = "escala"
 L.SlashScaleSet = "xanBuffTimers: a escala foi definida para [|cFF20ff20%s|r]"
@@ -101,3 +102,9 @@ L.BarSupportAnchor = "xanBuffTimers: Ancora do suporte"
 
 L.HideInRested = "Ocultar barras de buffs em uma area de descanso."
 L.ShowTimerOnRight = "Mostrar o temporizador a direita do icone de debuff."
+
+L.GraphicBarChkBtn = "Usar barras gráficas de buffs."
+L.BarColorText = "Cor da barra de buff."
+
+L.RetailWarningTitle = "AVISO POR FAVOR LEIA!!! SOMENTE RETAIL"
+L.RetailWarningBody = "Este addon não pode mais funcionar no Retail devido às mudanças na API da Blizzard.\n\nA Blizzard agora marca dados de auras em combate como "valores secretos" protegidos. Isso significa que addons não podem ler ou calcular durações de buffs, tempos de expiração ou outros dados de combate enquanto você está em combate. Como este addon precisa calcular o tempo restante para desenhar as barras, a funcionalidade principal é bloqueada pelo próprio cliente.\n\n|cFFFFFF00Isso não é um bug do xanBuffTimers.|r\n\n|cFFFF2020É uma restrição imposta pela Blizzard.|r\n\nAddons semelhantes de auras/temporizadores (por exemplo, WeakAuras e outros rastreadores de buffs/debuffs) enfrentam o mesmo problema e não conseguem mostrar temporizadores precisos no Retail.\n\nEm resumo: o Retail bloqueia o acesso aos dados exatos que este addon precisa, então as barras de buff não funcionarão. Este addon continua funcionando plenamente no Classic, TBC, Wrath e outros clientes não-Retail."

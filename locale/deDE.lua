@@ -12,7 +12,8 @@ L.SlashAnchorInfo = "Schaltet verschiebbare Anker um."
 L.SlashReset = "zuruecksetzen"
 L.SlashResetText = "Ankerpositionen zuruecksetzen"
 L.SlashResetInfo = "Ankerpositionen zuruecksetzen."
-L.SlashResetAlert = "xanBuffTimers: Ankerpositionen wurden zurueckgesetzt!"
+
+L.Reset = "Zurücksetzen"
 
 L.SlashScale = "skala"
 L.SlashScaleSet = "xanBuffTimers: Skala wurde auf [|cFF20ff20%s|r] gesetzt"
@@ -101,3 +102,9 @@ L.BarSupportAnchor = "xanBuffTimers: Unterstuetzungsanker"
 
 L.HideInRested = "Buff-Balken in einer Ruhezone verbergen."
 L.ShowTimerOnRight = "Timer rechts vom Debuff-Symbol anzeigen."
+
+L.GraphicBarChkBtn = "Grafische Buffbalken verwenden."
+L.BarColorText = "Buffbalken-Farbe."
+
+L.RetailWarningTitle = "WARNUNG BITTE LESEN!!! NUR RETAIL"
+L.RetailWarningBody = "Dieses Addon kann auf Retail aufgrund von Blizzards API-Änderungen nicht mehr funktionieren.\n\nBlizzard markiert kampfbezogene Auradaten jetzt als geschützte "secret values". Das bedeutet, Addons können in Kämpfen keine Buff-Dauern, Ablaufzeiten oder andere Kampfdaten lesen oder berechnen. Da dieses Addon die verbleibende Zeit berechnen muss, um Balken zu zeichnen, wird die Kernfunktion vom Client selbst blockiert.\n\n|cFFFFFF00Dies ist kein Bug in xanBuffTimers.|r\n\n|cFFFF2020Es ist eine von Blizzard durchgesetzte Einschränkung.|r\n\nÄhnliche Aura-/Timer-Addons (z. B. WeakAuras und andere Buff/Debuff-Tracker) stoßen auf dasselbe Problem und können auf Retail keine genauen Kampf-Timer anzeigen.\n\nKurz gesagt: Retail blockiert den Zugriff auf die Daten, die dieses Addon benötigt, daher funktionieren Buff-Balken dort nicht. Dieses Addon funktioniert weiterhin vollständig in Classic, TBC, Wrath und anderen Nicht-Retail-Clients."

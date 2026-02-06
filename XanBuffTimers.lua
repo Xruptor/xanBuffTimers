@@ -366,6 +366,29 @@ local allowedList = {
 	pet = true,
 	vehicle = true,
 }
+local issecretvalue = _G.issecretvalue
+local canaccessvalue = _G.canaccessvalue
+
+local function CanAccessValue(value)
+	if issecretvalue and issecretvalue(value) then
+		return canaccessvalue and canaccessvalue(value)
+	end
+	return true
+end
+
+local function SafeTrue(value)
+	if not CanAccessValue(value) then
+		return false
+	end
+	return value == true
+end
+
+local function SafeValue(value)
+	if not CanAccessValue(value) then
+		return nil
+	end
+	return value
+end
 local HEALERS = {
 	DRUID = true,
 	SHAMAN = true,
@@ -387,7 +410,9 @@ local function checkPlayerCasted(auraInfo, unitID)
 			if auraInfo.addedAuras then
 				for _, data in next, auraInfo.addedAuras do
 					--only process Helpful spells that we cast
-					if data.isHelpful and ((data.sourceUnit and allowedList[data.sourceUnit]) or data.isFromPlayerOrPlayerPet) then
+					local sourceUnit = SafeValue(data.sourceUnit)
+					local isFromPlayer = SafeTrue(data.isFromPlayerOrPlayerPet)
+					if SafeTrue(data.isHelpful) and ((sourceUnit and allowedList[sourceUnit]) or isFromPlayer) then
 						isPlayer = true
 					end
 				end
